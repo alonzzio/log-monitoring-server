@@ -1,0 +1,16 @@
+version: '3'
+services:
+    pub-sub-emulator:
+      image:  'google/cloud-sdk:latest'
+      command: ["gcloud","beta","emulators","pubsub","start","--host-port=0.0.0.0:8085", "--project=test"]
+      ports:
+        - "8085:8085"
+
+    mysql-db:
+      image:  'mysql'
+      command:  --default-authentication-plugin=mysql_native_password
+      restart:  always
+      environment:
+        MYSQL_ROOT_PASSWORD: example
+      ports:
+        - "8084:3306"
