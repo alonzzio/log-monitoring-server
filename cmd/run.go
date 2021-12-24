@@ -20,7 +20,6 @@ func run() error {
 	log.Println("ENV files Loading...")
 	parent := filepath.Dir(p)
 
-	fmt.Println(parent)
 	var fileNames []string
 	fileNames, err = findSpecificFileNames(parent+"/cmd/env", "*.env")
 	if err != nil {
@@ -30,9 +29,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println(os.Getenv("MYSQLROOTPASS"))
-
+	log.Println("ENV files Loaded.")
 	return nil
 }
 
@@ -40,7 +37,8 @@ func run() error {
 // Connection pooling parameters can be accessed using env variables if wanted to
 func newConn() (*config.Conn, error) {
 	// Load Mysql Conn Pool
-	dsn := fmt.Sprintf("root:example@tcp(localhost:8084)/lms")
+	// docker compose will create lms database
+	dsn := fmt.Sprintf("root:%v@tcp(localhost:8084)/%v", os.Getenv("MYSQLROOTPASS"), os.Getenv("MYSQLDBNAME"))
 	dbPool := config.MyPool{
 		MaxOpenDBConn:      10,
 		MaxIdleDbConn:      5,
