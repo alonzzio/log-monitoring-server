@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/alonzzio/envr"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/joho/godotenv"
 	"log"
@@ -11,6 +12,10 @@ import (
 	"path/filepath"
 )
 
+// run initialise project with necessary configurations
+// initialise and connect to database
+// Creating tables in database
+// Loading env from file to config etc.
 func run() error {
 	p, err := os.Getwd()
 	if err != nil {
@@ -29,13 +34,26 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	log.Println("ENV files Loaded.")
+	log.Println("ENV Loaded.")
+
+	c, err := newDBConn()
+	if err != nil {
+		return err
+	}
+
+	app.Conn = c
+
+	err = initialiseDatabase(&app)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // newConn connects to the database and generates a connection pool
 // Connection pooling parameters can be accessed using env variables if wanted to
-func newConn() (*config.Conn, error) {
+func newDBConn() (*config.Conn, error) {
 	// Load Mysql Conn Pool
 	// docker compose will create lms database
 	dsn := fmt.Sprintf("root:%v@tcp(localhost:8084)/%v", os.Getenv("MYSQLROOTPASS"), os.Getenv("MYSQLDBNAME"))
@@ -94,11 +112,57 @@ func loadEnv(envDirectory string, filenames ...string) error {
 		f = append(f, file)
 	}
 
-	// loads environment files from  directory
+	//loads environment files from  directory
 	err := godotenv.Load(f...)
 	if err != nil {
 		return err
 	}
+
+	err = loadENVtoConfig()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LoadENVtoConfig loads env variables to App config
+func loadENVtoConfig() error {
+	n, err := envr.GetInt("SENTENCECOUNT")
+	if err != nil {
+		return err
+	}
+	app.Environments.Paragraph.SentenceCount = n
+
+	n, err = envr.GetInt("WORDCOUNT")
+	if err != nil {
+		return err
+	}
+	app.Environments.Paragraph.WordCount = n
+
+	n, err = envr.GetInt("SERVICENAMECHARLEGTH")
+	if err != nil {
+		return err
+	}
+	app.Environments.ServiceLog.ServiceNameCharLength = uint(n)
+
+	s, err := envr.GetString("PROJECTID")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.ProjectID = s
+
+	s, err = envr.GetString("TOPICID")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.TopicID = s
+
+	s, err = envr.GetString("SUBSCRIPTIONID")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.SubscriptionID = s
 
 	return nil
 }

@@ -15,144 +15,132 @@ import (
 	"context"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
+	"github.com/alonzzio/log-monitoring-server/internal/pst"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"log"
 	"os"
 	"sync"
+
 	"time"
 )
 
 // app holds application wide configs
 var app config.AppConfig
+var conn *config.Conn
 
 func main() {
+	// This go routine will shut down entire process after given duration
+	go func(d time.Duration) {
+		//Sleeps until this time then exits
+		time.Sleep(d)
+		log.Println("Shutting down Service...")
+		os.Exit(0)
+	}(100 * time.Second)
+
 	ctx := context.Background()
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var conn *config.Conn
-	conn, err = newConn()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//conn, err = newDBConn()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	// set conn to App
 	// When we reach this point, successful mysql/any other Db connection is ready to use
-	app.Conn = conn
+	//app.Conn = conn
 
-	err = initialiseDatabase(&app)
+	//err = initialiseDatabase(&app)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	// init repositories
+	pstRepo := pst.NewRepo(&app)
+	pst.NewHandlers(pstRepo)
+
+	// starting new pub/sub fake server
+	grpcCon, err := pst.StartPubSubFakeServer(9001)
+	defer grpcCon.Close()
+
+	app.GrpcPubSubServer.Conn = grpcCon
+
+	//client, err := srv.NewClient(ctx, app.Environments.PubSub.ProjectID)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//defer client.Close()
+	//
+	//_, err = client.CreateTopic(ctx,app.Environments.PubSub.TopicID)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	c, err := pst.Repo.NewPubSubClient(ctx, app.Environments.PubSub.ProjectID)
+
+	err = pst.Repo.CreateTopic(ctx, app.Environments.PubSub.TopicID, c)
+	if err != nil {
+		log.Println(err)
+	}
+	fmt.Println("topic")
+
+	servName := pst.Repo.GenerateServicesPool(1000)
+	for i := 0; i < 1000; i++ {
+		fmt.Println(pst.Repo.GetRandomServiceName(&servName))
+	}
+	err = pst.Repo.PublishBulkMessage(app.Environments.PubSub.TopicID, pst.Repo.GenerateRandomMessage(100, &servName), c)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("published")
 
-	grpcConn, psServer, err := pubsubFakeServer("lms-topic", ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//
+	/////// this point we have succesfully created message to pub sub.
+	//// need to do it in loop and make it big but can be done later
+	//
+	//// now start subscribing
+	//
+	//subscriberClient, err := pubsub.NewClient(ctx, "project", option.WithGRPCConn(grpcConn))
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//t := subscriberClient.Topic("lms-topic")
+	//
+	////subs, err := subscriberClient.CreateSubscription(ctx, "lms-sub", pubsub.SubscriptionConfig{Topic: t,
+	////	AckDeadline:      10 * time.Second,
+	////	ExpirationPolicy: 25 * time.Hour})
+	//
+	//_, err = subscriberClient.CreateSubscription(context.Background(), "lms-topic",
+	//	pubsub.SubscriptionConfig{Topic: t})
+	//
+	//fmt.Println("reached here")
+	//
+	//subs := subscriberClient.Subscription("lms-topic")
+	//fmt.Println(subs.ID())
+	//
+	//ok, err := subs.Exists(context.Background())
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//fmt.Println("subs exist:", ok)
+	//
+	//fmt.Println(subs.String())
+	//err = subs.Receive(context.Background(),
+	//	func(ctx context.Context, mm *pubsub.Message) {
+	//		log.Printf("Got message: %s", mm.Data)
+	//		mm.Ack()
+	//	})
+	//if err != nil {
+	//	// Handle error.
+	//	log.Fatal(err)
+	//}
 
-	defer psServer.Close()
-	defer grpcConn.Close()
-
-	client, err := pubsub.NewClient(ctx, "project", option.WithGRPCConn(grpcConn))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	go func() {
-		m := Message{
-			ServiceName: "service1",
-			Payload:     "dfgdfgfd dfgdfgdfg dfgdfhfgjfg fsdfsgdfh efrsghfghfgjgf ",
-			Severity:    "INFO",
-			Timestamp:   time.Now(),
-		}
-
-		err = publishMessage("lms-topic", m, client)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		m = Message{
-			ServiceName: "service1",
-			Payload:     "dfgdfdfsfds thsis sisaf  the besr gfd dfgdfgdfg dfgdfhfgjfg fsdfsgdfh efrsghfghfgjgf ",
-			Severity:    "Err",
-			Timestamp:   time.Now(),
-		}
-
-		err = publishMessage("lms-topic", m, client)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		m = Message{
-			ServiceName: "service1",
-			Payload:     "dfgdfdfsfds thdsggdsgd fhgcfhfhcvbbc sis sisaf  the besr gfd dfgdfgdfg dfgdfhfgjfg fsdfsgdfh efrsghfghfgjgf ",
-			Severity:    "WARN",
-			Timestamp:   time.Now(),
-		}
-
-		err = publishMessage("lms-topic", m, client)
-		if err != nil {
-			log.Fatal(err)
-		}
-		m = Message{
-			ServiceName: "service1",
-			Payload:     "dfgdfdfsfdxcvxcvvcxs thsis sisaf  the besr gfd dfgdfgdfg dfgdfhfgjfg fsdfsgdfh efrsghfghfgjgf ",
-			Severity:    "INFO",
-			Timestamp:   time.Now(),
-		}
-
-		err = publishMessage("lms-topic", m, client)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	///// this point we have succesfully created message to pub sub.
-	// need to do it in loop and make it big but can be done later
-
-	// now start subscribing
-
-	subscriberClient, err := pubsub.NewClient(ctx, "project", option.WithGRPCConn(grpcConn))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	t := subscriberClient.Topic("lms-topic")
-
-	//subs, err := subscriberClient.CreateSubscription(ctx, "lms-sub", pubsub.SubscriptionConfig{Topic: t,
-	//	AckDeadline:      10 * time.Second,
-	//	ExpirationPolicy: 25 * time.Hour})
-
-	_, err = subscriberClient.CreateSubscription(context.Background(), "lms-topic",
-		pubsub.SubscriptionConfig{Topic: t})
-
-	fmt.Println("reached here")
-
-	subs := subscriberClient.Subscription("lms-topic")
-	fmt.Println(subs.ID())
-
-	ok, err := subs.Exists(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("subs exist:", ok)
-
-	fmt.Println(subs.String())
-	err = subs.Receive(context.Background(),
-		func(ctx context.Context, mm *pubsub.Message) {
-			log.Printf("Got message: %s", mm.Data)
-			mm.Ack()
-		})
-	if err != nil {
-		// Handle error.
-		log.Fatal(err)
-	}
-
-	fmt.Println("end")
+	fmt.Println("Shutting down Service!")
 }
 
 func initialiseDatabase(app *config.AppConfig) error {
@@ -268,6 +256,7 @@ func publishMessage(topic string, m Message, c *pubsub.Client) error {
 	return nil
 }
 
+// Message holds the message structure
 type Message struct {
 	ServiceName string    `json:"service_name"`
 	Payload     string    `json:"payload"`

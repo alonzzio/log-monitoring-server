@@ -4,16 +4,25 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"google.golang.org/grpc"
 	"time"
 )
 
 type AppConfig struct {
-	Environments Environments
-	Conn         *Conn
+	Environments     Environments
+	Conn             *Conn
+	GrpcPubSubServer PubSubServer
 }
 
 type Environments struct {
-	EnvValue1 string
+	Paragraph
+	ServiceLog
+	PubSub
+}
+
+// PubSubServer Holds ClientConnection for pstest
+type PubSubServer struct {
+	Conn *grpc.ClientConn
 }
 
 // Conn holds the database connection Pool
