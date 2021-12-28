@@ -22,6 +22,14 @@ const (
 	Fatal
 )
 
+// Message holds the message structure
+type Message struct {
+	ServiceName string    `json:"service_name"`
+	Payload     string    `json:"payload"`
+	Severity    string    `json:"severity"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
 // Repository holds App config
 type Repository struct {
 	App *config.AppConfig
@@ -198,4 +206,8 @@ func (r *Repository) GenerateServicesPool(n uint) *[]string {
 		s = append(s, fmt.Sprintf("Service-name:%v", i+1))
 	}
 	return &s
+}
+
+func (r *Repository) InitAndCreateTopic() {
+
 }

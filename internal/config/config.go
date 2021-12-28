@@ -20,7 +20,7 @@ type Environments struct {
 	PubSub
 }
 
-// PubSubServer Holds ClientConnection for pstest
+// PubSubServer Holds Client Connection for pstest
 type PubSubServer struct {
 	Conn *grpc.ClientConn
 }
