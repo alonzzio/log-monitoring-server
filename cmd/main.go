@@ -10,53 +10,39 @@
 package main
 
 import (
-	"cloud.google.com/go/pubsub"
-	"cloud.google.com/go/pubsub/pstest"
 	"context"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
-	"google.golang.org/api/option"
-	"google.golang.org/grpc"
 	"log"
 	"os"
 	"sync"
 
+	"github.com/alonzzio/log-monitoring-server/internal/helpers"
 	"time"
 )
 
 // app holds application wide configs
 var app config.AppConfig
-var conn *config.Conn
+
+//var conn *config.Conn
 
 func main() {
 	// This go routine will shut down entire process after given duration
 	go func(d time.Duration) {
-		//Sleeps until this time then exits
+		// Sleeps until this time then exits
+		// Only for this exercise
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(100 * time.Second)
+	}(65 * time.Second)
 
 	ctx := context.Background()
+
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//conn, err = newDBConn()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	// set conn to App
-	// When we reach this point, successful mysql/any other Db connection is ready to use
-	//app.Conn = conn
-
-	//err = initialiseDatabase(&app)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 
 	// init repositories
 	pstRepo := pst.NewRepo(&app)
@@ -68,17 +54,6 @@ func main() {
 
 	app.GrpcPubSubServer.Conn = grpcCon
 
-	//client, err := srv.NewClient(ctx, app.Environments.PubSub.ProjectID)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//defer client.Close()
-	//
-	//_, err = client.CreateTopic(ctx,app.Environments.PubSub.TopicID)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 	c, err := pst.Repo.NewPubSubClient(ctx, app.Environments.PubSub.ProjectID)
 
 	err = pst.Repo.CreateTopic(ctx, app.Environments.PubSub.TopicID, c)
@@ -87,11 +62,11 @@ func main() {
 	}
 	fmt.Println("topic")
 
-	servName := pst.Repo.GenerateServicesPool(1000)
-	for i := 0; i < 1000; i++ {
-		fmt.Println(pst.Repo.GetRandomServiceName(&servName))
+	servNamePool := pst.Repo.GenerateServicesPool(10)
+	for i := 0; i < 10; i++ {
+		fmt.Println(pst.Repo.GetRandomServiceName(servNamePool))
 	}
-	err = pst.Repo.PublishBulkMessage(app.Environments.PubSub.TopicID, pst.Repo.GenerateRandomMessage(100, &servName), c)
+	err = pst.Repo.PublishBulkMessage(app.Environments.PubSub.TopicID, pst.Repo.GenerateRandomMessage(100, servNamePool), c)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -139,7 +114,13 @@ func main() {
 	//	// Handle error.
 	//	log.Fatal(err)
 	//}
+	for ii := 0; ii < 10; ii++ {
+		go func() {
+			fmt.Println("Goroutine ID:", helpers.GetGoRoutineID())
+		}()
+	}
 
+	time.Sleep(1 * time.Minute)
 	fmt.Println("Shutting down Service!")
 }
 
@@ -196,70 +177,4 @@ func executeSQLWorker(sql string, app *config.AppConfig, errChan chan error, wg 
 	}
 
 	errChan <- nil
-}
-
-// pubsubFakeServer startup a fake server for pub sub
-func pubsubFakeServer(topic string, ctx context.Context) (grpcConn *grpc.ClientConn, psServer *pstest.Server, err error) {
-	// Start a fake server running locally at 9001.
-	srv := pstest.NewServerWithPort(9001)
-	//defer srv.Close()
-	// Connect to the server without using TLS.
-	conn, err := grpc.Dial(srv.Addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	log.Println("Pub Sub Server Started at port:9001")
-
-	//defer conn.Close()
-	// Use the connection when creating a pubsub client.
-
-	client, err := pubsub.NewClient(ctx, "project", option.WithGRPCConn(conn))
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = client.CreateTopic(ctx, topic)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Println("Topic Created: ", topic)
-	return conn, srv, nil
-
-}
-
-// createTopic creates topic on pub sub
-func createTopic(topicName string, ctx context.Context, client *pubsub.Client) error {
-	fmt.Println("came to topic")
-	topic, err := client.CreateTopic(ctx, topicName)
-	if err != nil {
-		return err
-	}
-	log.Println("Topic Created: ", topic)
-	return nil
-}
-
-func publishMessage(topic string, m Message, c *pubsub.Client) error {
-	t := c.Topic(topic)
-	ctx := context.Background()
-	defer t.Stop()
-	var results []*pubsub.PublishResult
-	r := t.Publish(ctx, &pubsub.Message{Data: []byte(fmt.Sprintf("%v", m))})
-
-	results = append(results, r)
-	for _, r := range results {
-		id, err := r.Get(ctx)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Published a message with a message ID: %s\n", id)
-	}
-	return nil
-}
-
-// Message holds the message structure
-type Message struct {
-	ServiceName string    `json:"service_name"`
-	Payload     string    `json:"payload"`
-	Severity    string    `json:"severity"`
-	Timestamp   time.Time `json:"timestamp"`
 }

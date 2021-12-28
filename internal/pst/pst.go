@@ -8,6 +8,7 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"google.golang.org/api/option"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,12 @@ const (
 // Repository holds App config
 type Repository struct {
 	App *config.AppConfig
+}
+
+type ServiceConfig struct {
+	PublishFrequency time.Duration
+	PerBatch         uint64
+	Mutex            *sync.Mutex
 }
 
 // NewRepo initialise and return Repository Type Which holds AppConfig
@@ -58,15 +65,10 @@ func (r *Repository) GetRandomSeverity(min, max int) Severity {
 func (r *Repository) GetRandomServiceName(s *[]string) string {
 	min := 0
 	max := len(*s) - 1
-
 	rand.Seed(time.Now().UnixNano())
 	i := rand.Intn(max-min+1) + min
-	return (*s)[i]
-}
-
-// GetRandomServiceName generates random service name for the message
-func (r *Repository) GetRandomServiceNameOld(s *[]string) string {
-	return ""
+	v := (*s)[i]
+	return v
 }
 
 // PublishMessage publishes a message to given topic
@@ -153,7 +155,7 @@ func (r *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub.Cl
 	return nil
 }
 
-// GenerateRandomMessage receives the message from pub sub
+// GenerateRandomMessage for the pub sub
 func (r *Repository) GenerateRandomMessage(n uint64, serviceNames *[]string) []Message {
 	m := make([]Message, 0)
 	for i := uint64(0); i < n; i++ {
@@ -190,10 +192,10 @@ func (r *Repository) SeverityToString(s Severity) string {
 
 // GenerateServicesPool generate some service name for this exercise
 // This function generates "Service-name:1" "Service-name:2"...
-func (r *Repository) GenerateServicesPool(n uint) []string {
+func (r *Repository) GenerateServicesPool(n uint) *[]string {
 	var s []string
 	for i := uint(0); i < n; i++ {
 		s = append(s, fmt.Sprintf("Service-name:%v", i+1))
 	}
-	return s
+	return &s
 }
