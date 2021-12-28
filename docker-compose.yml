@@ -1,0 +1,11 @@
+version: '3'
+services:
+    mysql-db:
+      image:  'mysql'
+      command:  --default-authentication-plugin=mysql_native_password
+      restart:  always
+      environment:
+        MYSQL_ROOT_PASSWORD: example
+        MYSQL_DATABASE: lms
+      ports:
+        - "8084:3306"
