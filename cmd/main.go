@@ -11,9 +11,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/alonzzio/log-monitoring-server/internal/access"
+	"github.com/alonzzio/log-monitoring-server/internal/collection"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -32,16 +35,23 @@ func main() {
 		os.Exit(0)
 	}(65 * time.Second)
 
-	//ctx := context.Background()
-
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// init repositories
+	// pub/sub
 	pstRepo := pst.NewRepo(&app)
 	pst.NewHandlers(pstRepo)
+
+	// Data collection Layer
+	dclRepo := collection.NewRepo(&app)
+	collection.NewHandlers(dclRepo)
+
+	// Data access Layer
+	dalRepo := access.NewRepo(&app)
+	access.NewHandlers(dalRepo)
 
 	/* Starting new pub/sub fake server */
 	grpcCon, err := pst.StartPubSubFakeServer(9001)
@@ -75,6 +85,14 @@ func main() {
 		Start of Message Queue and processing
 	*/
 
-	time.Sleep(100 * time.Second)
-	fmt.Println("Shutting down Service!")
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%v", app.Environments.DataAccessLayer.PortNumber),
+		Handler:      routes(),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	log.Println(fmt.Sprintf("Data Access Server Started at port: %v ", app.Environments.DataAccessLayer.PortNumber))
+	log.Fatal(srv.ListenAndServe())
 }

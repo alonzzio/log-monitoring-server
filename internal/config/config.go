@@ -15,9 +15,10 @@ type AppConfig struct {
 }
 
 type Environments struct {
-	Paragraph  Paragraph
-	ServiceLog ServiceLog
-	PubSub     PubSub
+	Paragraph       Paragraph
+	ServiceLog      ServiceLog
+	PubSub          PubSub
+	DataAccessLayer DataAccessLayer
 }
 
 // PubSubServer Holds Client Connection for pstest

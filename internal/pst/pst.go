@@ -110,11 +110,11 @@ func (r *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.
 		pr := t.Publish(ctx, &pubsub.Message{Data: []byte(fmt.Sprintf("%v", m))})
 		results = append(results, pr)
 		for _, rr := range results {
-			id, err := rr.Get(ctx) // _ is id
+			_, err := rr.Get(ctx) // _ is id
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Published a message with a message ID: %s\n", id)
+			//fmt.Printf("Published a message with a message ID: %s\n", id)
 		}
 		time.Sleep(msgConfig.Frequency)
 	}
@@ -245,9 +245,8 @@ func (r *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, w *
 	ServNamePool := r.GenerateServicesPool(serviceNamePoolSize)
 
 	var wg sync.WaitGroup
-	fmt.Println("here")
+
 	wg.Add(int(publishers))
-	fmt.Println("here after wg")
 
 	for i := uint(0); i < publishers; i++ {
 		// This wg is just for continuing the process

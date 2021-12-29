@@ -18,3 +18,7 @@ type PubSub struct {
 	MessageBatch      uint
 	MessageFrequency  uint // for time.Duration in milliseconds
 }
+
+type DataAccessLayer struct {
+	PortNumber string
+}

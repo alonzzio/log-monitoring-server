@@ -118,6 +118,13 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 	}
 	app.Environments.PubSub.MessageFrequency = uint(n)
 
+	// Data Access Layer
+	s, err = envr.GetString("DALPORTNUMBER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataAccessLayer.PortNumber = s
+
 	return nil
 }
 
