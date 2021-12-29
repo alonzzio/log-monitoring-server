@@ -1,9 +1,7 @@
 package access
 
 import (
-	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
-	"net/http"
 )
 
 // Repository holds App config
@@ -24,9 +22,3 @@ func NewHandlers(r *Repository) {
 }
 
 var Repo *Repository
-
-// ServerPing pings the server
-func (repo *Repository) ServerPing(w http.ResponseWriter, r *http.Request) {
-	_, _ = fmt.Fprintf(w, "Welcome to Data Access Layer")
-	return
-}

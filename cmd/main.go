@@ -70,29 +70,33 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, &wg, msgConf)
+
+	/*
+		Data Access Layer
+	*/
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		srv := &http.Server{
+			Addr:         fmt.Sprintf(":%v", app.Environments.DataAccessLayer.PortNumber),
+			Handler:      routes(),
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
+		}
+
+		log.Println(fmt.Sprintf("Data Access Server Started at port: %v ", app.Environments.DataAccessLayer.PortNumber))
+		log.Fatal(srv.ListenAndServe())
+	}(&wg)
+
+	/*
+		Data Collection Layer
+	*/
 
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()
 	}(&wg)
 
-	/*
-		End of Publishing Services
-	*/
-
-	/*
-		Start of Message Queue and processing
-	*/
-
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%v", app.Environments.DataAccessLayer.PortNumber),
-		Handler:      routes(),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	log.Println(fmt.Sprintf("Data Access Server Started at port: %v ", app.Environments.DataAccessLayer.PortNumber))
-	log.Fatal(srv.ListenAndServe())
+	time.Sleep(1 * time.Minute)
 }
