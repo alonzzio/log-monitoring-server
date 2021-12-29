@@ -72,7 +72,7 @@ func main() {
 	*/
 
 	/*
-		Start of Message Que and processing
+		Start of Message Queue and processing
 	*/
 
 	time.Sleep(100 * time.Second)
