@@ -94,6 +94,30 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 	}
 	app.Environments.PubSub.SubscriptionID = s
 
+	n, err = envr.GetInt("SERVICESNAMEPOOLSIZE")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.ServiceNamePool = uint(n)
+
+	n, err = envr.GetInt("SERVICEPUBLISHERS")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.ServicePublishers = uint(n)
+
+	n, err = envr.GetInt("MESSAGEPERBATCH")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.MessageBatch = uint(n)
+
+	n, err = envr.GetInt("MESSAGEFREQUENCY")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.MessageFrequency = uint(n)
+
 	return nil
 }
 

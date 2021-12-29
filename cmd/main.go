@@ -10,12 +10,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func main() {
 		os.Exit(0)
 	}(65 * time.Second)
 
-	ctx := context.Background()
+	//ctx := context.Background()
 
 	err := run()
 	if err != nil {
@@ -43,29 +43,38 @@ func main() {
 	pstRepo := pst.NewRepo(&app)
 	pst.NewHandlers(pstRepo)
 
-	// starting new pub/sub fake server
+	/* Starting new pub/sub fake server */
 	grpcCon, err := pst.StartPubSubFakeServer(9001)
 	defer grpcCon.Close()
 
 	app.GrpcPubSubServer.Conn = grpcCon
 
-	c, err := pst.Repo.NewPubSubClient(ctx, app.Environments.PubSub.ProjectID)
+	/* Init PubSub services.
+	This process simulates multiple or n number of services publishing messages to the given topic.
+	We can control n and its frequency via env file.
+	As this is an external service, I assume it runs continuously.*/
 
-	err = pst.Repo.CreateTopic(ctx, app.Environments.PubSub.TopicID, c)
-	if err != nil {
-		log.Println(err)
+	msgConf := pst.PublisherServiceConfig{
+		Frequency: time.Duration(int(app.Environments.PubSub.MessageFrequency)) * time.Millisecond,
+		PerBatch:  app.Environments.PubSub.MessageBatch,
 	}
-	fmt.Println("topic")
 
-	servNamePool := pst.Repo.GenerateServicesPool(10)
-	for i := 0; i < 10; i++ {
-		fmt.Println(pst.Repo.GetRandomServiceName(servNamePool))
-	}
-	err = pst.Repo.PublishBulkMessage(app.Environments.PubSub.TopicID, pst.Repo.GenerateRandomMessage(100, servNamePool), c)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("published")
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, &wg, msgConf)
 
+	go func(wg *sync.WaitGroup) {
+		wg.Wait()
+	}(&wg)
+
+	/*
+		End of Publishing Services
+	*/
+
+	/*
+		Start of Message Que and processing
+	*/
+
+	time.Sleep(100 * time.Second)
 	fmt.Println("Shutting down Service!")
 }
