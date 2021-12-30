@@ -6,10 +6,12 @@ import (
 	"github.com/alonzzio/envr"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/joho/godotenv"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 // FindSpecificFileNames finds file names without path inside a folder
@@ -125,6 +127,43 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 	}
 	app.Environments.DataAccessLayer.PortNumber = s
 
+	// Data Collection Layer
+	n, err = envr.GetInt("DCLNUMBEROFWORKERS")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.Workers = uint(n)
+
+	n, err = envr.GetInt("DCLJOBSBUFFER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.JobsBuffer = uint(n)
+
+	n, err = envr.GetInt("DCLRESULTBUFFER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ResultBuffer = uint(n)
+
+	n, err = envr.GetInt("DCLRECEIVERGOROUTINES")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ReceiverGoRoutines = uint(n)
+
+	n, err = envr.GetInt("DCLRECEIVERGOROUTINES")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ReceiverGoRoutines = uint(n)
+
+	n, err = envr.GetInt("DCLRECIEVERTIMEOUT")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ReceiverTimeOut = uint(n)
+
 	return nil
 }
 
@@ -137,4 +176,10 @@ func GetGoRoutineID() uint64 {
 	// ignoring error here
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return n
+}
+
+func GetRandomString(min, max int) string {
+	rand.Seed(time.Now().UnixNano())
+	i := rand.Intn(max-min+1) + min
+	return string(i)
 }

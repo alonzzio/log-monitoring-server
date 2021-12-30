@@ -10,6 +10,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/access"
 	"github.com/alonzzio/log-monitoring-server/internal/collection"
@@ -33,7 +34,7 @@ func main() {
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(65 * time.Second)
+	}(250 * time.Second)
 
 	err := run()
 	if err != nil {
@@ -94,9 +95,22 @@ func main() {
 		Data Collection Layer
 	*/
 
+	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
+	if err != nil {
+		log.Fatal("Client creation err:", err)
+	}
+
+	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
+	if err != nil {
+		log.Fatal("Sub Creation err:", err)
+	}
+
+	wg.Add(2)
+	go collection.Allocate(&wg)
+	go collection.ResultFunc(&wg)
+	collection.CreateWorkerPool(10)
+
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()
 	}(&wg)
-
-	time.Sleep(1 * time.Minute)
 }

@@ -22,3 +22,11 @@ type PubSub struct {
 type DataAccessLayer struct {
 	PortNumber string
 }
+
+type DataCollectionLayer struct {
+	Workers            uint
+	JobsBuffer         uint
+	ResultBuffer       uint
+	ReceiverGoRoutines uint
+	ReceiverTimeOut    uint
+}

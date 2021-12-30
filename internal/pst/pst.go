@@ -105,7 +105,7 @@ func (r *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.
 	t := c.Topic(topic)
 	ctx := context.Background()
 	defer t.Stop()
-	for m := range *msg {
+	for _, m := range *msg {
 		var results []*pubsub.PublishResult
 		pr := t.Publish(ctx, &pubsub.Message{Data: []byte(fmt.Sprintf("%v", m))})
 		results = append(results, pr)
@@ -144,15 +144,16 @@ func (r *Repository) CreateSubscription(ctx context.Context, subID string, topic
 }
 
 // ReceiveMessage receives the message from pub sub
-func (r *Repository) ReceiveMessage(ctx context.Context, sub *pubsub.Subscription) (interface{}, error) {
+func (r *Repository) ReceiveMessage(ctx context.Context, sub *pubsub.Subscription) ([]byte, error) {
 	var temp []byte
 	err := sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		// Do something with message
 		temp = m.Data
+		fmt.Println(temp)
 		m.Ack()
 	})
 	if err != nil {
-		return nil, err
+		return temp, err
 	}
 
 	return temp, nil
