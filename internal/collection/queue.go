@@ -83,6 +83,7 @@ func Worker(wg *sync.WaitGroup) {
 
 	wg.Done()
 }
+
 func CreateWorkerPool(noOfWorkers int) {
 	var wg sync.WaitGroup
 	for i := 0; i < noOfWorkers; i++ {
@@ -104,8 +105,8 @@ func Allocate(wg *sync.WaitGroup) {
 
 func ResultFunc(wg *sync.WaitGroup) {
 	defer wg.Done()
-	for _ = range results {
-		//fmt.Println(string(result.Data))
+	for result := range results {
+		fmt.Println(string(result.Data))
 	}
 
 }

@@ -6,12 +6,10 @@ import (
 	"github.com/alonzzio/envr"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/joho/godotenv"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"time"
 )
 
 // FindSpecificFileNames finds file names without path inside a folder
@@ -176,10 +174,4 @@ func GetGoRoutineID() uint64 {
 	// ignoring error here
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return n
-}
-
-func GetRandomString(min, max int) string {
-	rand.Seed(time.Now().UnixNano())
-	i := rand.Intn(max-min+1) + min
-	return string(i)
 }
