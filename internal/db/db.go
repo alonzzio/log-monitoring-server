@@ -2,11 +2,13 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 func InitialiseDatabase(app *config.AppConfig) error {
@@ -71,14 +73,14 @@ func NewConn() (*config.Conn, error) {
 	// docker compose will create lms database
 	dsn := fmt.Sprintf("root:%v@tcp(localhost:8084)/%v", os.Getenv("MYSQLROOTPASS"), os.Getenv("MYSQLDBNAME"))
 	dbPool := config.MyPool{
-		MaxOpenDBConn:      10,
-		MaxIdleDbConn:      5,
+		MaxOpenDBConn:      5,
+		MaxIdleDbConn:      2,
 		MaxDbLifeTime:      300,
 		PingContextTimeout: 10,
 	}
 
 	ctx := context.Background()
-	db, err := config.ConnectSQL(ctx, dsn, &dbPool)
+	db, err := ConnectSQL(ctx, dsn, &dbPool)
 	if err != nil {
 		return nil, err
 	}
@@ -88,4 +90,39 @@ func NewConn() (*config.Conn, error) {
 	}
 
 	return conn, nil
+}
+
+// ConnectSQL creates database pool for MySql
+func ConnectSQL(c context.Context, dsn string, pool *config.MyPool) (*sql.DB, error) {
+	d, err := newDatabase(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	d.SetMaxOpenConns(pool.MaxOpenDBConn)
+	d.SetMaxIdleConns(pool.MaxIdleDbConn)
+	d.SetConnMaxLifetime(time.Duration(pool.MaxDbLifeTime) * time.Minute)
+
+	ctx, cancel := context.WithTimeout(c, time.Duration(pool.PingContextTimeout)*time.Millisecond)
+	defer cancel() // releases resources if slowOperation completes before timeout elapses
+
+	if err = d.PingContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+// NewDatabase creates new database for the application
+func newDatabase(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }

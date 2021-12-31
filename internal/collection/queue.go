@@ -4,7 +4,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"context"
 	"fmt"
-	"github.com/alonzzio/log-monitoring-server/internal/pst"
+	"google.golang.org/api/option"
 	"log"
 	"sync"
 	"time"
@@ -27,23 +27,27 @@ type Result struct {
 var jobs = make(chan Job, 100)
 var results = make(chan Result, 100)
 
-func Worker(wg *sync.WaitGroup) {
+// Worker receives the message from pub/sub
+// send message to 'results' channel
+func (repo *Repository) Worker(wg *sync.WaitGroup) {
 	defer wg.Done()
+	ctx := context.Background()
+	con := repo.App.GrpcPubSubServer.Conn
+	client, err := pubsub.NewClient(ctx, "lms", option.WithGRPCConn(con))
+	if err != nil {
+		log.Println("Error: in client:", err)
+	}
+	defer client.Close()
+
 	for {
 		select {
+
 		case _ = <-jobs:
-			ctx := context.Background()
-			client, err := pst.Repo.NewPubSubClient(ctx, "lms")
-			if err != nil {
-				log.Println("Error: in client:", err)
-				return
-			}
-			defer client.Close()
-			sub := client.Subscription("lms-sub")
 			var mu sync.Mutex
+			sub := client.Subscription("lms-sub")
 			received := 0
 			cctx, cancel := context.WithCancel(ctx)
-			err = sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
+			errR := sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
 				mu.Lock()
 				defer mu.Unlock()
 				msg.Ack()
@@ -53,30 +57,41 @@ func Worker(wg *sync.WaitGroup) {
 					cancel()
 				}
 			})
-			if err != nil {
-				fmt.Println("Err in receive", err)
+			if errR != nil {
+				fmt.Println("Err in receive:", err)
+				continue
 			}
 		}
 	}
 }
 
-func CreateWorkerPool(noOfWorkers int) {
+// CreateWorkerPool creates worker pool
+func (repo *Repository) CreateWorkerPool(noOfWorkers int) {
 	var wg sync.WaitGroup
 	for i := 0; i < noOfWorkers; i++ {
 		wg.Add(1)
-		go Worker(&wg)
+		go repo.Worker(&wg)
 	}
 
 	wg.Wait()
-	fmt.Println("Closed Worker")
-	//close(results)
 }
 
-func Allocate(wg *sync.WaitGroup) {
-	defer wg.Done()
+// CreateMessageWorkerPool creates pool for processing messages from 'results' channel
+func (repo *Repository) CreateMessageWorkerPool(noOfWorkers int) {
+	var wg sync.WaitGroup
+	for i := 0; i < noOfWorkers; i++ {
+		wg.Add(1)
+		go repo.MessageProcessWorker(&wg)
+	}
+
+	wg.Wait()
+}
+
+// Allocate allocates job channel
+func (repo *Repository) Allocate() {
 	defer close(jobs)
 	for {
-		if len(jobs) == 1000 {
+		if len(jobs) == 100 {
 			continue
 		}
 		job := Job{}
@@ -84,10 +99,16 @@ func Allocate(wg *sync.WaitGroup) {
 	}
 }
 
-func ResultFunc(wg *sync.WaitGroup) {
+// MessageProcessWorker process the received messages from 'results' channel
+func (repo *Repository) MessageProcessWorker(wg *sync.WaitGroup) {
 	defer wg.Done()
-	for result := range results {
-		fmt.Println(string(result.Data))
-	}
+	for {
+		select {
 
+		case _ = <-results:
+			//fmt.Println("here message received")
+			//fmt.Println(string(data.Data))
+
+		}
+	}
 }

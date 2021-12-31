@@ -35,7 +35,7 @@ func main() {
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(2500 * time.Second)
+	}(2500 * time.Minute)
 
 	err := run()
 	if err != nil {
@@ -56,8 +56,9 @@ func main() {
 	access.NewHandlers(dalRepo)
 
 	/* Starting new pub/sub fake server */
-	grpcCon, err := pst.StartPubSubFakeServer(9001)
-	//defer grpcCon.Close()
+	grpcCon, pubSubServer, err := pst.StartPubSubFakeServer(9001)
+	defer grpcCon.Close()
+	defer pubSubServer.Close()
 
 	app.GrpcPubSubServer.Conn = grpcCon
 
@@ -99,7 +100,7 @@ func main() {
 
 		for {
 			fmt.Println("Number of Go-routines:", runtime.NumGoroutine())
-			time.Sleep(250 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}()
 
@@ -110,13 +111,12 @@ func main() {
 
 	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
 	if err != nil {
-		log.Fatal("Sub Creation err:", err)
+		log.Fatal("Subscription creation err:", err)
 	}
 
-	wg.Add(2)
-	go collection.Allocate(&wg)
-	go collection.ResultFunc(&wg)
-	collection.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
+	go collection.Repo.Allocate()
+	go collection.Repo.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
+	go collection.Repo.CreateMessageWorkerPool(app.Environments.DataCollectionLayer.Workers)
 
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()

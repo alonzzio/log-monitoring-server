@@ -11,15 +11,15 @@ type PubSubServer struct {
 }
 
 // StartPubSubFakeServer startup a fake server for pub sub
-func StartPubSubFakeServer(port int) (grpcConn *grpc.ClientConn, err error) {
+func StartPubSubFakeServer(port int) (*grpc.ClientConn, *pstest.Server, error) {
 	// Start a fake server running locally at given port.
 	srv := pstest.NewServerWithPort(port)
 	//defer srv.Close()
 	// Connect to the server without using TLS.
 	conn, err := grpc.Dial(srv.Addr, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return conn, nil
+	return conn, srv, nil
 }
