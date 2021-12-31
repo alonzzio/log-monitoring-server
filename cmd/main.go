@@ -12,32 +12,30 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/alonzzio/log-monitoring-server/internal/access"
+	"github.com/alonzzio/log-monitoring-server/internal/collection"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
 	"log"
+	"net/http"
 	"os"
+	"runtime"
 	"sync"
-
-	"github.com/alonzzio/log-monitoring-server/internal/helpers"
 	"time"
 )
 
 // app holds application wide configs
 var app config.AppConfig
 
-//var conn *config.Conn
-
 func main() {
 	// This go routine will shut down entire process after given duration
+	// Sleeps until this time then exits
+	// Only for this exercise
 	go func(d time.Duration) {
-		// Sleeps until this time then exits
-		// Only for this exercise
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(65 * time.Second)
-
-	ctx := context.Background()
+	}(2500 * time.Minute)
 
 	err := run()
 	if err != nil {
@@ -45,136 +43,84 @@ func main() {
 	}
 
 	// init repositories
+	// pub/sub
 	pstRepo := pst.NewRepo(&app)
 	pst.NewHandlers(pstRepo)
 
-	// starting new pub/sub fake server
-	grpcCon, err := pst.StartPubSubFakeServer(9001)
+	// Data collection Layer
+	dclRepo := collection.NewRepo(&app)
+	collection.NewHandlers(dclRepo)
+
+	// Data access Layer
+	dalRepo := access.NewRepo(&app)
+	access.NewHandlers(dalRepo)
+
+	/* Starting new pub/sub fake server */
+	grpcCon, pubSubServer, err := pst.StartPubSubFakeServer(9001)
 	defer grpcCon.Close()
+	defer pubSubServer.Close()
 
 	app.GrpcPubSubServer.Conn = grpcCon
 
-	c, err := pst.Repo.NewPubSubClient(ctx, app.Environments.PubSub.ProjectID)
+	/* Init PubSub services.
+	This process simulates multiple or n number of services publishing messages to the given topic.
+	We can control n and its frequency via env file.
+	As this is an external service, I assume it runs continuously.*/
 
-	err = pst.Repo.CreateTopic(ctx, app.Environments.PubSub.TopicID, c)
-	if err != nil {
-		log.Println(err)
-	}
-	fmt.Println("topic")
-
-	servNamePool := pst.Repo.GenerateServicesPool(10)
-	for i := 0; i < 10; i++ {
-		fmt.Println(pst.Repo.GetRandomServiceName(servNamePool))
-	}
-	err = pst.Repo.PublishBulkMessage(app.Environments.PubSub.TopicID, pst.Repo.GenerateRandomMessage(100, servNamePool), c)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("published")
-
-	//
-	/////// this point we have succesfully created message to pub sub.
-	//// need to do it in loop and make it big but can be done later
-	//
-	//// now start subscribing
-	//
-	//subscriberClient, err := pubsub.NewClient(ctx, "project", option.WithGRPCConn(grpcConn))
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//t := subscriberClient.Topic("lms-topic")
-	//
-	////subs, err := subscriberClient.CreateSubscription(ctx, "lms-sub", pubsub.SubscriptionConfig{Topic: t,
-	////	AckDeadline:      10 * time.Second,
-	////	ExpirationPolicy: 25 * time.Hour})
-	//
-	//_, err = subscriberClient.CreateSubscription(context.Background(), "lms-topic",
-	//	pubsub.SubscriptionConfig{Topic: t})
-	//
-	//fmt.Println("reached here")
-	//
-	//subs := subscriberClient.Subscription("lms-topic")
-	//fmt.Println(subs.ID())
-	//
-	//ok, err := subs.Exists(context.Background())
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//fmt.Println("subs exist:", ok)
-	//
-	//fmt.Println(subs.String())
-	//err = subs.Receive(context.Background(),
-	//	func(ctx context.Context, mm *pubsub.Message) {
-	//		log.Printf("Got message: %s", mm.Data)
-	//		mm.Ack()
-	//	})
-	//if err != nil {
-	//	// Handle error.
-	//	log.Fatal(err)
-	//}
-	for ii := 0; ii < 10; ii++ {
-		go func() {
-			fmt.Println("Goroutine ID:", helpers.GetGoRoutineID())
-		}()
-	}
-
-	time.Sleep(1 * time.Minute)
-	fmt.Println("Shutting down Service!")
-}
-
-func initialiseDatabase(app *config.AppConfig) error {
-	_, err := app.Conn.DB.Exec(`CREATE DATABASE IF NOT EXISTS ` + os.Getenv("MYSQLDBNAME") + `;`)
-	if err != nil {
-		log.Fatal(err)
+	msgConf := pst.PublisherServiceConfig{
+		Frequency: time.Duration(int(app.Environments.PubSub.MessageFrequency)) * time.Millisecond,
+		PerBatch:  app.Environments.PubSub.MessageBatch,
 	}
 
 	var wg sync.WaitGroup
-
 	wg.Add(2)
-	errChan := make(chan error, 2)
+	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, &wg, msgConf)
 
-	sql1 := `CREATE TABLE IF NOT EXISTS service_logs (
-			service_name VARCHAR(100) NOT NULL,
-			payload VARCHAR(2048) NOT NULL,
-			severity ENUM("debug", "info", "warn", "error", "fatal") NOT NULL,
-			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-			);`
-
-	sql2 := `CREATE TABLE IF NOT EXISTS service_severity (
-			service_name VARCHAR(100) NOT NULL,
-			severity ENUM("debug", "info", "warn", "error", "fatal") NOT NULL,
-			count INT(4) NOT NULL,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-			);`
-
-	go executeSQLWorker(sql1, app, errChan, &wg)
-	go executeSQLWorker(sql2, app, errChan, &wg)
-
-	wg.Wait()
-	close(errChan)
-
-	for err = range errChan {
-		if err != nil {
-			log.Fatal(err)
+	/*
+		Data Access Layer
+	*/
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		srv := &http.Server{
+			Addr:         fmt.Sprintf(":%v", app.Environments.DataAccessLayer.PortNumber),
+			Handler:      routes(),
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
 		}
-	}
 
-	return nil
-}
+		log.Println(fmt.Sprintf("Data Access Server Started at port: %v ", app.Environments.DataAccessLayer.PortNumber))
+		log.Fatal(srv.ListenAndServe())
+	}(&wg)
 
-// executeSQLWorker this function executes against DB and passing errors through error channel
-// this is not really needed but i am demonstrating the sql can be run parallel
-func executeSQLWorker(sql string, app *config.AppConfig, errChan chan error, wg *sync.WaitGroup) {
-	defer wg.Done()
+	/*
+		Data Collection Layer
+	*/
+	go func() {
 
-	// ignoring the result part here
-	_, err := app.Conn.DB.Exec(sql)
+		for {
+			fmt.Println("Number of Go-routines:", runtime.NumGoroutine())
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
-		errChan <- err
+		log.Fatal("Client creation err:", err)
 	}
 
-	errChan <- nil
+	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
+	if err != nil {
+		log.Fatal("Subscription creation err:", err)
+	}
+
+	go collection.Repo.Allocate()
+	go collection.Repo.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
+	go collection.Repo.CreateMessageWorkerPool(app.Environments.DataCollectionLayer.Workers)
+
+	go func(wg *sync.WaitGroup) {
+		wg.Wait()
+	}(&wg)
+
+	time.Sleep(2500 * time.Second)
 }

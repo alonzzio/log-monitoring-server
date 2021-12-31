@@ -94,6 +94,62 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 	}
 	app.Environments.PubSub.SubscriptionID = s
 
+	n, err = envr.GetInt("SERVICESNAMEPOOLSIZE")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.ServiceNamePool = uint(n)
+
+	n, err = envr.GetInt("SERVICEPUBLISHERS")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.ServicePublishers = uint(n)
+
+	n, err = envr.GetInt("MESSAGEPERBATCH")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.MessageBatch = uint(n)
+
+	n, err = envr.GetInt("MESSAGEFREQUENCY")
+	if err != nil {
+		return err
+	}
+	app.Environments.PubSub.MessageFrequency = uint(n)
+
+	// Data Access Layer
+	s, err = envr.GetString("DALPORTNUMBER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataAccessLayer.PortNumber = s
+
+	// Data Collection Layer
+	n, err = envr.GetInt("DCLNUMBEROFWORKERS")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.Workers = n
+
+	n, err = envr.GetInt("DCLJOBSBUFFER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.JobsBuffer = n
+
+	n, err = envr.GetInt("DCLRESULTBUFFER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ResultBuffer = n
+
+	n, err = envr.GetInt("DCLRECIEVERTIMEOUT")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.ReceiverTimeOut = n
+
 	return nil
 }
 
