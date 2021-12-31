@@ -130,37 +130,25 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 	if err != nil {
 		return err
 	}
-	app.Environments.DataCollectionLayer.Workers = uint(n)
+	app.Environments.DataCollectionLayer.Workers = n
 
 	n, err = envr.GetInt("DCLJOBSBUFFER")
 	if err != nil {
 		return err
 	}
-	app.Environments.DataCollectionLayer.JobsBuffer = uint(n)
+	app.Environments.DataCollectionLayer.JobsBuffer = n
 
 	n, err = envr.GetInt("DCLRESULTBUFFER")
 	if err != nil {
 		return err
 	}
-	app.Environments.DataCollectionLayer.ResultBuffer = uint(n)
-
-	n, err = envr.GetInt("DCLRECEIVERGOROUTINES")
-	if err != nil {
-		return err
-	}
-	app.Environments.DataCollectionLayer.ReceiverGoRoutines = uint(n)
-
-	n, err = envr.GetInt("DCLRECEIVERGOROUTINES")
-	if err != nil {
-		return err
-	}
-	app.Environments.DataCollectionLayer.ReceiverGoRoutines = uint(n)
+	app.Environments.DataCollectionLayer.ResultBuffer = n
 
 	n, err = envr.GetInt("DCLRECIEVERTIMEOUT")
 	if err != nil {
 		return err
 	}
-	app.Environments.DataCollectionLayer.ReceiverTimeOut = uint(n)
+	app.Environments.DataCollectionLayer.ReceiverTimeOut = n
 
 	return nil
 }

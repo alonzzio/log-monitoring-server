@@ -24,9 +24,8 @@ type DataAccessLayer struct {
 }
 
 type DataCollectionLayer struct {
-	Workers            uint
-	JobsBuffer         uint
-	ResultBuffer       uint
-	ReceiverGoRoutines uint
-	ReceiverTimeOut    uint
+	Workers         int
+	JobsBuffer      int
+	ResultBuffer    int
+	ReceiverTimeOut int
 }

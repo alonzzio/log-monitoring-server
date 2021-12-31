@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -34,7 +35,7 @@ func main() {
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(250 * time.Second)
+	}(2500 * time.Second)
 
 	err := run()
 	if err != nil {
@@ -56,7 +57,7 @@ func main() {
 
 	/* Starting new pub/sub fake server */
 	grpcCon, err := pst.StartPubSubFakeServer(9001)
-	defer grpcCon.Close()
+	//defer grpcCon.Close()
 
 	app.GrpcPubSubServer.Conn = grpcCon
 
@@ -94,6 +95,13 @@ func main() {
 	/*
 		Data Collection Layer
 	*/
+	go func() {
+
+		for {
+			fmt.Println("Number of Go-routines:", runtime.NumGoroutine())
+			time.Sleep(250 * time.Millisecond)
+		}
+	}()
 
 	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
@@ -108,9 +116,11 @@ func main() {
 	wg.Add(2)
 	go collection.Allocate(&wg)
 	go collection.ResultFunc(&wg)
-	collection.CreateWorkerPool(10)
+	collection.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
 
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()
 	}(&wg)
+
+	time.Sleep(2500 * time.Second)
 }

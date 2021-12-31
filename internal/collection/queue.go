@@ -5,8 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"log"
 	"sync"
 	"time"
@@ -20,12 +18,9 @@ type Message struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-type Job struct {
-	//Subscription *pubsub.Subscription
-}
+type Job struct{}
 
 type Result struct {
-	job  Job
 	Data []byte
 }
 
@@ -34,54 +29,35 @@ var results = make(chan Result, 100)
 
 func Worker(wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	ctx := context.Background()
-	client, err := pst.Repo.NewPubSubClient(ctx, "lms")
-	if err != nil {
-		log.Println("Error: in client:", err)
-		//continue
-	}
-
-	defer client.Close()
-
-	sub := client.Subscription("lms-sub")
-	for job := range jobs {
-		// Turn on synchronous mode. This makes the subscriber use the Pull RPC rather
-		// than the StreamingPull RPC, which is useful for guaranteeing MaxOutstandingMessages,
-		// the max number of messages the client will hold in memory at a time.
-		sub.ReceiveSettings.Synchronous = true
-		sub.ReceiveSettings.MaxOutstandingMessages = 10
-
-		// Receive messages for 10 seconds.
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-		// Create a channel to handle messages to as they come in.
-		cm := make(chan *pubsub.Message)
-		defer close(cm)
-
-		// Handle individual messages in a goroutine.
-		go func() {
-			for msg := range cm {
-				//fmt.Println("got message",msg.Data)
-				msg.Ack()
-				output := Result{job, msg.Data}
-				results <- output
+	for {
+		select {
+		case _ = <-jobs:
+			ctx := context.Background()
+			client, err := pst.Repo.NewPubSubClient(ctx, "lms")
+			if err != nil {
+				log.Println("Error: in client:", err)
+				return
 			}
-		}()
-
-		// Receive blocks until the passed in context is done.
-		err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
-			cm <- msg
-		})
-		if err != nil && status.Code(err) != codes.Canceled {
-			fmt.Println("Receive: err", err)
+			defer client.Close()
+			sub := client.Subscription("lms-sub")
+			var mu sync.Mutex
+			received := 0
+			cctx, cancel := context.WithCancel(ctx)
+			err = sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
+				mu.Lock()
+				defer mu.Unlock()
+				msg.Ack()
+				results <- Result{Data: msg.Data}
+				received++
+				if received == 10 {
+					cancel()
+				}
+			})
+			if err != nil {
+				fmt.Println("Err in receive", err)
+			}
 		}
-
-		//output := Result{job,}
-		//results <- output
 	}
-
-	wg.Done()
 }
 
 func CreateWorkerPool(noOfWorkers int) {
@@ -90,14 +66,19 @@ func CreateWorkerPool(noOfWorkers int) {
 		wg.Add(1)
 		go Worker(&wg)
 	}
+
 	wg.Wait()
-	close(results)
+	fmt.Println("Closed Worker")
+	//close(results)
 }
 
 func Allocate(wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer close(jobs)
 	for {
+		if len(jobs) == 1000 {
+			continue
+		}
 		job := Job{}
 		jobs <- job
 	}
