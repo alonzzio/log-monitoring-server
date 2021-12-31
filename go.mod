@@ -8,7 +8,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.10.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/jackskj/carta v0.2.0 // indirect
+	github.com/jackskj/carta v0.2.0
 	github.com/joho/godotenv v1.4.0
 	github.com/stretchr/testify v1.6.1
 	google.golang.org/api v0.58.0
