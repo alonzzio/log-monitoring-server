@@ -131,6 +131,7 @@ func main() {
 	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, &wgg)
 	go collection.Repo.CreateJobsPool(jobs)
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logs, &wg)
+	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logs, &wg)
 
 	// read all the results
 	func() {
