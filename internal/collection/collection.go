@@ -6,17 +6,13 @@ import (
 
 // Repository holds App config
 type Repository struct {
-	App     *config.AppConfig
-	Jobs    chan Job
-	Results chan Result
+	App *config.AppConfig
 }
 
 // NewRepo initialise and return Repository Type Which holds AppConfig
 func NewRepo(a *config.AppConfig) *Repository {
 	return &Repository{
-		App:     a,
-		Jobs:    make(chan Job, a.Environments.DataCollectionLayer.JobsBuffer),
-		Results: make(chan Result, a.Environments.DataCollectionLayer.ResultBuffer),
+		App: a,
 	}
 }
 
