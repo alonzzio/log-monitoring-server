@@ -114,13 +114,9 @@ func main() {
 		log.Fatal("Subscription creation err:", err)
 	}
 
-	//go collection.Repo.Allocate()
-	//go collection.Repo.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
-	//go collection.Repo.CreateMessageWorkerPool(app.Environments.DataCollectionLayer.Workers)
-
-	//go func(wg *sync.WaitGroup) {
-	//	wg.Wait()
-	//}(&wg)
+	go func(wg *sync.WaitGroup) {
+		wg.Wait()
+	}(&wg)
 
 	jobs := make(chan collection.ReceiverJob, app.Environments.DataCollectionLayer.JobsBuffer)
 	results := make(chan collection.ReceiverResult, app.Environments.DataCollectionLayer.ResultBuffer)
@@ -131,34 +127,10 @@ func main() {
 	// Workers CPU core
 	//n := runtime.NumCPU()
 	//if we want to change use Worker from DCL env
-
 	numWorkers := app.Environments.DataCollectionLayer.Workers
 	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, &wgg)
 	go collection.Repo.CreateJobsPool(jobs)
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logs, &wg)
-	// make our channels for communicating work and results
-	// spin up workers and use a sync.WaitGroup to indicate completion
-	//fmt.Println(runtime.NumCPU())
-	////for i := 0; i < runtime.NumCPU; i++ {
-	//for i := 0; i < runtime.NumCPU(); i++ {
-	//	wgg.Add(1)
-	//	go func() {
-	//		defer wg.Done()
-	//		collection.Repo.ReceiverWorker(jobs, results)
-	//	}()
-	//}
-	// wait on the workers to finish and close the result channel
-	// to signal downstream that all work is done
-	//// start sending jobs
-	//go func() {
-	//	defer close(jobs)
-	//	for {
-	//		jobs <- collection.ReceiverJob{} // I haven't defined getJob() and noMoreJobs()
-	//		//if noMoreJobs() {  // they are just for illustration
-	//		//	break
-	//		//}
-	//	}
-	//}()
 
 	// read all the results
 	func() {
