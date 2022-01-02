@@ -19,7 +19,6 @@ func InitialiseDatabase(app *config.AppConfig) error {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
 	errChan := make(chan error, 2)
 
 	sql1 := `CREATE TABLE IF NOT EXISTS service_logs (
@@ -37,6 +36,8 @@ func InitialiseDatabase(app *config.AppConfig) error {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 			);`
 
+	wg.Add(2)
+
 	go ExecuteSQLWorker(sql1, app, errChan, &wg)
 	go ExecuteSQLWorker(sql2, app, errChan, &wg)
 
@@ -49,11 +50,30 @@ func InitialiseDatabase(app *config.AppConfig) error {
 		}
 	}
 
+	// After creating tables , truncating tables just make sure this test works fine
+	sql1 = `TRUNCATE TABLE lms.service_logs;`
+	sql2 = `TRUNCATE TABLE lms.service_severity;`
+
+	errChan2 := make(chan error, 2)
+	wg.Add(2)
+	// Truncate tables if data exists
+	go ExecuteSQLWorker(sql1, app, errChan2, &wg)
+	go ExecuteSQLWorker(sql2, app, errChan2, &wg)
+
+	wg.Wait()
+	close(errChan2)
+
+	for err = range errChan2 {
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	return nil
 }
 
 // ExecuteSQLWorker this function executes against DB and passing errors through error channel
-// this is not really needed but i am demonstrating the sql can be run parallel
+// this is not really needed but, I am demonstrating the sql can be run parallel
 func ExecuteSQLWorker(sql string, app *config.AppConfig, errChan chan error, wg *sync.WaitGroup) {
 	defer wg.Done()
 

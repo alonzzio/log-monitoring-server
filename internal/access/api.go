@@ -15,29 +15,28 @@ func (repo *Repository) ServerPing(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// GetServicesCount statistics of services
-func (repo *Repository) GetServicesCount(w http.ResponseWriter, r *http.Request) {
+// GetServices statistics of services
+func (repo *Repository) GetServices(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	type Result struct {
 		Status     int         `json:"status"`
 		StatusText string      `json:"status_text"`
-		Response   interface{} `json:"service"`
+		Response   interface{} `json:"services"`
 	}
 
 	type Service struct {
-		Name             string `json:"name"  db:"service_name"`
-		NumberOfServices int    `json:"count"  db:"count"`
+		Name string `json:"name"  db:"service_name"`
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	s := `SELECT 
-		COALESCE(service_name,'')AS service_name,
-		COUNT(service_name) AS count 
-		FROM lms.service_severity 
-		GROUP BY service_name;`
+			COALESCE(service_name,'') AS service_name
+			FROM lms.service_severity 
+			GROUP BY service_name 
+			ORDER BY service_name;`
 	rows, err := repo.App.Conn.DB.QueryContext(ctx, s)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
