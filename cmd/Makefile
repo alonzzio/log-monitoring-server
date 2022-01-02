@@ -7,8 +7,12 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 BINARY_NAME=lms
 BINARY_UNIX=$(BINARY_NAME)_unix
+PROJECT_NAME = $(notdir $(PWD))
+SERVICE_TARGET := main
 
-all: dep test build run
+.PHONY: build test clean run dep
+
+all: docker-up dep test build run
 build:
 		$(GOBUILD) -o $(BINARY_NAME) -v
 test:
@@ -22,3 +26,16 @@ run:
 		./$(BINARY_NAME)
 dep:
 	$(GOMOD) download
+
+#Docker compose up
+# Mysql image will pull and run
+docker-up:
+	docker-compose -f ../docker-compose.yml up -d
+
+docker-kill:
+	docker kill mysql-database
+
+docker-clean:
+	docker container rm --force mysql-database
+
+
