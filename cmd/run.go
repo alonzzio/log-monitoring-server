@@ -23,6 +23,7 @@ func run() error {
 
 	var fileNames []string
 	fileNames, err = helpers.FindSpecificFileNames(parent+"/cmd/env", "*.env")
+	//fileNames, err = helpers.FindSpecificFileNames(parent+"/env", "*.env")
 	//fileNames, err = findSpecificFileNames(parent+"/cmd/env", "*.env")
 	if err != nil {
 		return err
