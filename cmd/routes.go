@@ -15,5 +15,6 @@ func routes() http.Handler {
 
 	mux.Get("/ping", access.Repo.ServerPing)
 	mux.Get("/services", access.Repo.GetServices)
+	mux.Get("/services-severity", access.Repo.GetSingleServiceSeverity)
 	return mux
 }

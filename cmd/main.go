@@ -35,7 +35,7 @@ func main() {
 		time.Sleep(d)
 		log.Println("Shutting down Service...")
 		os.Exit(0)
-	}(2500 * time.Minute)
+	}(2 * time.Minute)
 
 	err := run()
 	if err != nil {
@@ -93,17 +93,18 @@ func main() {
 		log.Fatal(srv.ListenAndServe())
 	}(&wg)
 
-	/*
-		Data Collection Layer
-	*/
+	// This function is just for monitoring the Go-routines Surge when Bigger number of workers in place
+	// And also used to track for Data Race
 	go func() {
-
 		for {
-			fmt.Println("Number of Go-routines:", runtime.NumGoroutine())
-			time.Sleep(5000 * time.Millisecond)
+			fmt.Println("Number of go-routines:", runtime.NumGoroutine())
+			time.Sleep(10 * time.Second)
 		}
 	}()
 
+	/*
+		Data Collection Layer
+	*/
 	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
 		log.Fatal("Client creation err:", err)
@@ -133,5 +134,5 @@ func main() {
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
 	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, &wg)
 
-	time.Sleep(2500 * time.Second)
+	time.Sleep(2 * time.Minute)
 }

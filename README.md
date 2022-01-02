@@ -86,18 +86,102 @@ _Clone the project from github._
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+##Data Access Layer 
+Server running at local host port `8080` address: `localhost:8080` Port number can be configured though env files.
 
-<!-- LICENSE -->
-## License
+   ping is just a ping to the server
+   eg:
+   `cURL`
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+   ```sh
+   curl -X GET \
+   http://localhost:8080/ping \
+   -H 'cache-control: no-cache' \
+   ``` 
+   Response Will Be:
+
+   ```sh
+   Welcome to Data Access Layer% 
+   ```
+
+   To get all Service names in the DB:
+
+   ```shell
+   curl -X GET \
+     http://localhost:8080/services \
+     -H 'cache-control: no-cache' \
+   ```
+
+   Response:
+
+```json
+   {
+       "status": 200,
+       "status_text": "ok",
+       "services": [
+           {
+               "name": "Service-name:1"
+           },
+           {
+               "name": "Service-name:10"
+           },
+           {
+               "name": "Service-name:2"
+           },
+           {
+               "name": "Service-name:3"
+           },
+           {
+               "name": "Service-name:4"
+           },
+           {
+               "name": "Service-name:5"
+           },
+           {
+               "name": "Service-name:6"
+           },
+           {
+               "name": "Service-name:7"
+           },
+           {
+               "name": "Service-name:8"
+           },
+           {
+               "name": "Service-name:9"
+           }
+       ]
+   }
+   ```
+ _Note: This is just a demo service names_
+
+### Data Access Layer API is being written.
+Comparing or Analytical API's is not Ready
+
+
+
+
+<!-- Configure -->
+## Configure Project ENV
+
+WE can configure most of the Environment variables `./cmd/env/*.env` files
+
+* Number of workers
+* Message Batch 
+* Message Payload Configurations (message length paragraph count etc.)
+* Pub/Sub Configurations
+* Other general Configurations.
+
+_Note:Multiple env files is supported. Extensions of the file should be `*.ENV`_
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
+## Testing Files not complete.
+I Will add more testing in coming days
 
-<!-- CONTACT -->
-## Contact
+
+<!-- Repository -->
+## Repository
 
 
 Project Link: [https://github.com/alonzzio/log-monitoring-server](https://github.com/alonzzio/log-monitoring-server)
