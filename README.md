@@ -86,7 +86,7 @@ _Clone the project from github._
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-##Data Access Layer 
+## Data Access Layer 
 Server running at local host port `8080` address: `localhost:8080` Port number can be configured though env files.
 
    ping is just a ping to the server
