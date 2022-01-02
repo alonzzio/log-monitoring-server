@@ -24,8 +24,11 @@ type DataAccessLayer struct {
 }
 
 type DataCollectionLayer struct {
-	Workers         int
-	JobsBuffer      int
-	ResultBuffer    int
-	ReceiverTimeOut int
+	Workers           int
+	JobsBuffer        int
+	ResultBuffer      int
+	LogsBuffer        int
+	ReceiverTimeOut   int
+	MessagePerReceive int
+	MessageBatchSize  int
 }

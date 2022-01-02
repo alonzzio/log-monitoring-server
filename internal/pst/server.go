@@ -14,7 +14,6 @@ type PubSubServer struct {
 func StartPubSubFakeServer(port int) (*grpc.ClientConn, *pstest.Server, error) {
 	// Start a fake server running locally at given port.
 	srv := pstest.NewServerWithPort(port)
-	//defer srv.Close()
 	// Connect to the server without using TLS.
 	conn, err := grpc.Dial(srv.Addr, grpc.WithInsecure())
 	if err != nil {

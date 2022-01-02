@@ -3,14 +3,12 @@ package pst
 import (
 	"cloud.google.com/go/pubsub"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
-	"github.com/alonzzio/log-monitoring-server/internal/helpers"
 	"github.com/brianvoe/gofakeit/v6"
 	"google.golang.org/api/option"
-	"log"
 	"math/rand"
-	"sync"
 	"time"
 )
 
@@ -61,19 +59,19 @@ var Repo *Repository
 // Word count and Sentence count can be adjusted in env
 // Do not set higher values, it will generate very long paragraphs.
 // it can be problematic for SQL inserts and performance
-func (r *Repository) GetPayLoad() string {
-	return gofakeit.Paragraph(1, r.App.Environments.Paragraph.SentenceCount, r.App.Environments.Paragraph.WordCount, ".")
+func (repo *Repository) GetPayLoad() string {
+	return gofakeit.Paragraph(1, repo.App.Environments.Paragraph.SentenceCount, repo.App.Environments.Paragraph.WordCount, ".")
 }
 
 // GetRandomSeverity generates random severity between the range
-func (r *Repository) GetRandomSeverity(min, max int) Severity {
+func (repo *Repository) GetRandomSeverity(min, max int) Severity {
 	rand.Seed(time.Now().UnixNano())
 	return Severity(rand.Intn(max-min+1) + min)
 }
 
 // GetRandomServiceName generates random service name for the message
-// this funcion generates random string only
-func (r *Repository) GetRandomServiceName(s *[]string) string {
+// this function generates random string only
+func (repo *Repository) GetRandomServiceName(s *[]string) string {
 	min := 0
 	max := len(*s) - 1
 	rand.Seed(time.Now().UnixNano())
@@ -83,7 +81,7 @@ func (r *Repository) GetRandomServiceName(s *[]string) string {
 }
 
 // PublishMessage publishes a message to given topic
-func (r *Repository) PublishMessage(topic string, m Message, c *pubsub.Client) error {
+func (repo *Repository) PublishMessage(topic string, m Message, c *pubsub.Client) error {
 	t := c.Topic(topic)
 	ctx := context.Background()
 	defer t.Stop()
@@ -101,18 +99,25 @@ func (r *Repository) PublishMessage(topic string, m Message, c *pubsub.Client) e
 }
 
 // PublishBulkMessage publishes a message to given topic
-func (r *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
+func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
 	t := c.Topic(topic)
 	ctx := context.Background()
 	defer t.Stop()
 	for _, m := range *msg {
 		var results []*pubsub.PublishResult
-		pr := t.Publish(ctx, &pubsub.Message{Data: []byte(fmt.Sprintf("%v", m))})
+		out, err := json.Marshal(m)
+		if err != nil {
+			fmt.Println("Err JSON Marshaller", err)
+			return err
+		}
+
+		pr := t.Publish(ctx, &pubsub.Message{Data: out})
 		results = append(results, pr)
 		for _, rr := range results {
-			_, err := rr.Get(ctx) // _ is id
-			if err != nil {
-				return err
+			_, errGet := rr.Get(ctx) // _ is id
+			if errGet != nil {
+				fmt.Println("Err JSON Marshaller", errGet)
+				return errGet
 			}
 			//fmt.Printf("Published a message with a message ID: %s\n", id)
 		}
@@ -122,8 +127,8 @@ func (r *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.
 }
 
 // NewPubSubClient creates a new client connection for pub/sub
-func (r *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
-	client, err := pubsub.NewClient(ctx, projectID, option.WithGRPCConn(r.App.GrpcPubSubServer.Conn))
+func (repo *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
+	client, err := pubsub.NewClient(ctx, projectID, option.WithGRPCConn(repo.App.GrpcPubSubServer.Conn))
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +136,7 @@ func (r *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pu
 }
 
 // CreateSubscription creates a subscription for a given client on a topic
-func (r *Repository) CreateSubscription(ctx context.Context, subID string, topicName string, c *pubsub.Client) (*pubsub.Subscription, error) {
+func (repo *Repository) CreateSubscription(ctx context.Context, subID string, topicName string, c *pubsub.Client) (*pubsub.Subscription, error) {
 	t := c.Topic(topicName)
 	// config can be pull from env if wanted to.
 	s, err := c.CreateSubscription(ctx, subID, pubsub.SubscriptionConfig{Topic: t,
@@ -143,24 +148,8 @@ func (r *Repository) CreateSubscription(ctx context.Context, subID string, topic
 	return s, nil
 }
 
-// ReceiveMessage receives the message from pub sub
-func (r *Repository) ReceiveMessage(ctx context.Context, sub *pubsub.Subscription) ([]byte, error) {
-	var temp []byte
-	err := sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		// Do something with message
-		temp = m.Data
-		fmt.Println(temp)
-		m.Ack()
-	})
-	if err != nil {
-		return temp, err
-	}
-
-	return temp, nil
-}
-
 // CreateTopic receives the message from pub sub
-func (r *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub.Client) error {
+func (repo *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub.Client) error {
 	_, err := c.CreateTopic(ctx, topic)
 	if err != nil {
 		return err
@@ -170,14 +159,14 @@ func (r *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub.Cl
 
 // GenerateRandomMessages for the pub sub
 // it creates multiple messages as slice
-func (r *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *[]Message {
+func (repo *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *[]Message {
 	m := make([]Message, 0)
 	for i := uint(0); i < n; i++ {
 		//compose message
 		a := Message{
-			ServiceName: r.GetRandomServiceName(serviceNames),
-			Payload:     r.GetPayLoad(),
-			Severity:    r.SeverityToString(r.GetRandomSeverity(0, 4)),
+			ServiceName: repo.GetRandomServiceName(serviceNames),
+			Payload:     repo.GetPayLoad(),
+			Severity:    repo.SeverityToString(repo.GetRandomSeverity(0, 4)),
 			Timestamp:   time.Now(),
 		}
 		m = append(m, a)
@@ -186,18 +175,18 @@ func (r *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *[]M
 }
 
 // GenerateARandomMessage for the pub sub
-func (r *Repository) GenerateARandomMessage(serviceNames *[]string) *Message {
+func (repo *Repository) GenerateARandomMessage(serviceNames *[]string) *Message {
 	//compose message
 	return &Message{
-		ServiceName: r.GetRandomServiceName(serviceNames),
-		Payload:     r.GetPayLoad(),
-		Severity:    r.SeverityToString(r.GetRandomSeverity(0, 4)),
+		ServiceName: repo.GetRandomServiceName(serviceNames),
+		Payload:     repo.GetPayLoad(),
+		Severity:    repo.SeverityToString(repo.GetRandomSeverity(0, 4)),
 		Timestamp:   time.Now(),
 	}
 }
 
 // SeverityToString converts severity to string
-func (r *Repository) SeverityToString(s Severity) string {
+func (repo *Repository) SeverityToString(s Severity) string {
 	var m string
 	switch s {
 
@@ -217,56 +206,10 @@ func (r *Repository) SeverityToString(s Severity) string {
 
 // GenerateServicesPool generate some service name for this exercise
 // This function generates "Service-name:1" "Service-name:2"...
-func (r *Repository) GenerateServicesPool(n uint) *[]string {
+func (repo *Repository) GenerateServicesPool(n uint) *[]string {
 	var s []string
 	for i := uint(0); i < n; i++ {
 		s = append(s, fmt.Sprintf("Service-name:%v", i+1))
 	}
 	return &s
-}
-
-// InitPubSubProcess will initialise pub/sub
-// Create a topic from env variable
-// Initialise and run Publishers Fake services concurrently.
-func (r *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, w *sync.WaitGroup, serviceConfig PublisherServiceConfig) {
-	defer w.Done()
-	ctx := context.Background()
-	c, err := r.NewPubSubClient(ctx, r.App.Environments.PubSub.ProjectID)
-	if err != nil {
-		// if we encounter error we can't continue
-		log.Fatal(err)
-	}
-
-	err = r.CreateTopic(ctx, r.App.Environments.PubSub.TopicID, c)
-	if err != nil {
-		// if we encounter error we can't continue
-		log.Fatal(err)
-	}
-	// External service fake pool
-	ServNamePool := r.GenerateServicesPool(serviceNamePoolSize)
-
-	var wg sync.WaitGroup
-
-	wg.Add(int(publishers))
-
-	for i := uint(0); i < publishers; i++ {
-		// This wg is just for continuing the process
-
-		go func(wg *sync.WaitGroup) {
-			defer wg.Done()
-			fmt.Println("New publisher service stated in goroutine id:", helpers.GetGoRoutineID())
-			for {
-				m := r.GenerateRandomMessages(serviceConfig.PerBatch, ServNamePool)
-				errP := r.PublishBulkMessage(r.App.Environments.PubSub.TopicID, m, c, serviceConfig)
-				if errP != nil {
-					log.Println("Error occurred in loop in goroutine id:", helpers.GetGoRoutineID())
-					continue
-				}
-			}
-		}(&wg)
-
-		go func() {
-			wg.Wait()
-		}()
-	}
 }

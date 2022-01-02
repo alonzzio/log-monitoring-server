@@ -143,12 +143,29 @@ func LoadENVtoConfig(app *config.AppConfig) error {
 		return err
 	}
 	app.Environments.DataCollectionLayer.ResultBuffer = n
+	n, err = envr.GetInt("DCLLOGSBUFFER")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.LogsBuffer = n
 
 	n, err = envr.GetInt("DCLRECIEVERTIMEOUT")
 	if err != nil {
 		return err
 	}
 	app.Environments.DataCollectionLayer.ReceiverTimeOut = n
+
+	n, err = envr.GetInt("DCLMESSAGEPERRECEIVE")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.MessagePerReceive = n
+
+	n, err = envr.GetInt("DCLMESSAGEBATCHSIZE")
+	if err != nil {
+		return err
+	}
+	app.Environments.DataCollectionLayer.MessageBatchSize = n
 
 	return nil
 }

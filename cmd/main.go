@@ -100,7 +100,7 @@ func main() {
 
 		for {
 			fmt.Println("Number of Go-routines:", runtime.NumGoroutine())
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5000 * time.Millisecond)
 		}
 	}()
 
@@ -114,13 +114,24 @@ func main() {
 		log.Fatal("Subscription creation err:", err)
 	}
 
-	go collection.Repo.Allocate()
-	go collection.Repo.CreateWorkerPool(app.Environments.DataCollectionLayer.Workers)
-	go collection.Repo.CreateMessageWorkerPool(app.Environments.DataCollectionLayer.Workers)
-
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()
 	}(&wg)
+
+	jobs := make(chan collection.ReceiverJob, app.Environments.DataCollectionLayer.JobsBuffer)
+	results := make(chan collection.ReceiverResult, app.Environments.DataCollectionLayer.ResultBuffer)
+	logsBatch := make(chan collection.LogsBatch, app.Environments.DataCollectionLayer.LogsBuffer)
+
+	var wgg sync.WaitGroup
+
+	// Workers CPU core
+	//n := runtime.NumCPU()
+	//if we want to change use Worker from DCL env
+	numWorkers := app.Environments.DataCollectionLayer.Workers
+	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, &wgg)
+	go collection.Repo.CreateJobsPool(jobs)
+	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
+	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, &wg)
 
 	time.Sleep(2500 * time.Second)
 }
