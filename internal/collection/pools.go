@@ -19,6 +19,12 @@ type Message struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
+type ServiceSeverity struct {
+	ServiceName string `json:"service_name"`
+	Severity    string `json:"severity"`
+	Count       int    `json:"count"`
+}
+
 type ReceiverJob struct{}
 
 type ReceiverResult struct {
@@ -26,6 +32,11 @@ type ReceiverResult struct {
 }
 
 type Logs *[]Message
+
+type LogsBatch struct {
+	LogMessage      *[]Message
+	ServiceSeverity *[]ServiceSeverity
+}
 
 // ReceiverWorker receives messages from pub/sub and send it to receiverResult Channel
 func (repo *Repository) ReceiverWorker(jobs <-chan ReceiverJob, results chan<- ReceiverResult) {
@@ -82,19 +93,30 @@ func (repo *Repository) CreateReceiverWorkerPools(poolSize int, jobs <-chan Rece
 }
 
 // CreateProcessWorkerPools creates a pool of Receiver Workers
-func (repo *Repository) CreateProcessWorkerPools(poolSize int, results <-chan ReceiverResult, logs chan<- Logs, wg *sync.WaitGroup) {
+func (repo *Repository) CreateProcessWorkerPools(poolSize int, results <-chan ReceiverResult, logs chan<- Logs, logsBatch chan<- LogsBatch, wg *sync.WaitGroup) {
 	wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		// message size can be controlled through env files
-		go repo.MessageProcessWorker(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logs)
+		go repo.MessageProcessWorker(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logs, logsBatch)
 	}
 	wg.Wait()
 }
 
+//// CreateProcessWorkerPools creates a pool of Receiver Workers
+//func (repo *Repository) CreateProcessWorkerPoolsOld(poolSize int, results <-chan ReceiverResult, logs chan<- Logs, wg *sync.WaitGroup) {
+//	wg.Add(poolSize)
+//	for i := 0; i < poolSize; i++ {
+//		// message size can be controlled through env files
+//		go repo.MessageProcessWorkerOld(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logs)
+//	}
+//	wg.Wait()
+//}
+
 // MessageProcessWorker gets the messages from results channel and process as batch send to 'Logs' channel
-func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan ReceiverResult, logs chan<- Logs) {
+func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan ReceiverResult, logs chan<- Logs, logsBatch chan<- LogsBatch) {
 	for {
 		var batch []Message
+		var serviceSeverity []ServiceSeverity
 		for i := 0; i < msgSize; i++ {
 			out := <-results
 			var m Message
@@ -103,9 +125,140 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 				log.Println(err)
 				continue
 			}
+
+			ss := ServiceSeverity{
+				ServiceName: m.ServiceName,
+				Severity:    "",
+				Count:       1,
+			}
+
+			switch m.Severity {
+			case "Debug":
+				if len(serviceSeverity) == 0 {
+					ss.Severity = "Debug"
+					serviceSeverity = append(serviceSeverity, ss)
+					break
+				}
+
+				found := false
+				for ii, v := range serviceSeverity {
+					if v.ServiceName == m.ServiceName && v.Severity == m.Severity {
+						serviceSeverity[ii].Count += 1
+						found = true
+						break
+					}
+				}
+				if !found {
+					ss.Severity = "Debug"
+					serviceSeverity = append(serviceSeverity, ss)
+				}
+
+			case "Info":
+				if len(serviceSeverity) == 0 {
+					ss.Severity = "Info"
+					serviceSeverity = append(serviceSeverity, ss)
+					break
+				}
+
+				found := false
+				for ii, v := range serviceSeverity {
+					if v.ServiceName == m.ServiceName && v.Severity == m.Severity {
+						serviceSeverity[ii].Count += 1
+						found = true
+						break
+					}
+				}
+				if !found {
+					ss.Severity = "Info"
+					serviceSeverity = append(serviceSeverity, ss)
+				}
+
+			case "Warn":
+				if len(serviceSeverity) == 0 {
+					ss.Severity = "Warn"
+					serviceSeverity = append(serviceSeverity, ss)
+					break
+				}
+
+				found := false
+				for ii, v := range serviceSeverity {
+					if v.ServiceName == m.ServiceName && v.Severity == m.Severity {
+						serviceSeverity[ii].Count += 1
+						found = true
+						break
+					}
+				}
+				if !found {
+					ss.Severity = "Warn"
+					serviceSeverity = append(serviceSeverity, ss)
+				}
+			case "Error":
+				if len(serviceSeverity) == 0 {
+					ss.Severity = "Error"
+					serviceSeverity = append(serviceSeverity, ss)
+					break
+				}
+
+				found := false
+				for ii, v := range serviceSeverity {
+					if v.ServiceName == m.ServiceName && v.Severity == m.Severity {
+						serviceSeverity[ii].Count += 1
+						found = true
+						break
+					}
+				}
+				if !found {
+					ss.Severity = "Error"
+					serviceSeverity = append(serviceSeverity, ss)
+				}
+
+			case "Fatal":
+				if len(serviceSeverity) == 0 {
+					ss.Severity = "Fatal"
+					serviceSeverity = append(serviceSeverity, ss)
+					break
+				}
+
+				found := false
+				for ii, v := range serviceSeverity {
+					if v.ServiceName == m.ServiceName && v.Severity == m.Severity {
+						serviceSeverity[ii].Count += 1
+						found = true
+						break
+					}
+				}
+				if !found {
+					ss.Severity = "Fatal"
+					serviceSeverity = append(serviceSeverity, ss)
+				}
+			}
+
 			batch = append(batch, m)
 		}
-		fmt.Println("1 batch send")
+
 		logs <- &batch
+		logsBatch <- LogsBatch{
+			LogMessage:      &batch,
+			ServiceSeverity: &serviceSeverity,
+		}
 	}
 }
+
+//
+//// MessageProcessWorker gets the messages from results channel and process as batch send to 'Logs' channel
+//func (repo *Repository) MessageProcessWorkerOld(msgSize int, results <-chan ReceiverResult, logs chan<- Logs) {
+//	for {
+//		var batch []Message
+//			for i := 0; i < msgSize; i++ {
+//			out := <-results
+//			var m Message
+//			err := json.Unmarshal(out.Data, &m)
+//			if err != nil {
+//				log.Println(err)
+//				continue
+//			}
+//			batch = append(batch, m)
+//		}
+//		logs <- &batch
+//	}
+//}
