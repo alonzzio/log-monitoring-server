@@ -75,12 +75,16 @@ _Clone the project from github._
       ```sh
       make all
       ``` 
+   7. Docker kill container
+      ```sh
+      make docker-kill
+      ``` 
+   8. Clean docker container
+      ```sh
+      make docker-clean
+      ``` 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- LICENSE -->
