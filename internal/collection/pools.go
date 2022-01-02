@@ -93,27 +93,17 @@ func (repo *Repository) CreateReceiverWorkerPools(poolSize int, jobs <-chan Rece
 }
 
 // CreateProcessWorkerPools creates a pool of Receiver Workers
-func (repo *Repository) CreateProcessWorkerPools(poolSize int, results <-chan ReceiverResult, logs chan<- Logs, logsBatch chan<- LogsBatch, wg *sync.WaitGroup) {
+func (repo *Repository) CreateProcessWorkerPools(poolSize int, results <-chan ReceiverResult, logsBatch chan<- LogsBatch, wg *sync.WaitGroup) {
 	wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		// message size can be controlled through env files
-		go repo.MessageProcessWorker(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logs, logsBatch)
+		go repo.MessageProcessWorker(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logsBatch)
 	}
 	wg.Wait()
 }
 
-//// CreateProcessWorkerPools creates a pool of Receiver Workers
-//func (repo *Repository) CreateProcessWorkerPoolsOld(poolSize int, results <-chan ReceiverResult, logs chan<- Logs, wg *sync.WaitGroup) {
-//	wg.Add(poolSize)
-//	for i := 0; i < poolSize; i++ {
-//		// message size can be controlled through env files
-//		go repo.MessageProcessWorkerOld(repo.App.Environments.DataCollectionLayer.MessageBatchSize, results, logs)
-//	}
-//	wg.Wait()
-//}
-
 // MessageProcessWorker gets the messages from results channel and process as batch send to 'Logs' channel
-func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan ReceiverResult, logs chan<- Logs, logsBatch chan<- LogsBatch) {
+func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan ReceiverResult, logsBatch chan<- LogsBatch) {
 	for {
 		var batch []Message
 		var serviceSeverity []ServiceSeverity
@@ -236,29 +226,9 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 			batch = append(batch, m)
 		}
 
-		logs <- &batch
 		logsBatch <- LogsBatch{
 			LogMessage:      &batch,
 			ServiceSeverity: &serviceSeverity,
 		}
 	}
 }
-
-//
-//// MessageProcessWorker gets the messages from results channel and process as batch send to 'Logs' channel
-//func (repo *Repository) MessageProcessWorkerOld(msgSize int, results <-chan ReceiverResult, logs chan<- Logs) {
-//	for {
-//		var batch []Message
-//			for i := 0; i < msgSize; i++ {
-//			out := <-results
-//			var m Message
-//			err := json.Unmarshal(out.Data, &m)
-//			if err != nil {
-//				log.Println(err)
-//				continue
-//			}
-//			batch = append(batch, m)
-//		}
-//		logs <- &batch
-//	}
-//}

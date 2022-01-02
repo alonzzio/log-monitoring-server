@@ -120,7 +120,6 @@ func main() {
 
 	jobs := make(chan collection.ReceiverJob, app.Environments.DataCollectionLayer.JobsBuffer)
 	results := make(chan collection.ReceiverResult, app.Environments.DataCollectionLayer.ResultBuffer)
-	logs := make(chan collection.Logs, app.Environments.DataCollectionLayer.LogsBuffer)
 	logsBatch := make(chan collection.LogsBatch, app.Environments.DataCollectionLayer.LogsBuffer)
 
 	var wgg sync.WaitGroup
@@ -128,23 +127,11 @@ func main() {
 	// Workers CPU core
 	//n := runtime.NumCPU()
 	//if we want to change use Worker from DCL env
-	//numWorkers := app.Environments.DataCollectionLayer.Workers
-	go collection.Repo.CreateReceiverWorkerPools(2, jobs, results, &wgg)
+	numWorkers := app.Environments.DataCollectionLayer.Workers
+	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, &wgg)
 	go collection.Repo.CreateJobsPool(jobs)
-	go collection.Repo.CreateProcessWorkerPools(2, results, logs, logsBatch, &wg)
-	//go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logs, &wg)
-	//go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logs, &wg)
-	go collection.Repo.CreateDbProcessWorkerPools(2, logsBatch, logsBatch, &wg)
-
-	// read all the results
-	//func() {
-	//	for {
-	//		select {
-	//		case l := <-logs:
-	//			fmt.Println("Revd: len:", len(*l))
-	//		}
-	//	}
-	//}()
+	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
+	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, &wg)
 
 	time.Sleep(2500 * time.Second)
 }
