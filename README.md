@@ -2,10 +2,6 @@
 <div id="top"></div>
 
 
-<!-- PROJECT SHIELDS -->
-
-
-
 <br />
 <div align="center">
 
@@ -29,12 +25,65 @@ Log Monitoring Server fetches Logs from Services like Pub/Sub.Stream pull the me
 
 <!-- GETTING STARTED -->
 
+## Project structure:
+There are three separate modules in the frameworks.
+* PUB/SUB Server
+* Data Collection Layer
+* Data Access Layer
+
+```
+log-monitoring-server
+├── .circleci
+├── cmd
+│   ├── env
+│   │   ├── dal.env
+│   │   ├── database.env
+│   │   ├── dcl.env
+│   │   └── pubsub.env
+│   ├── Makefile    
+│   ├── main.go
+│   ├── routes.go
+│   └── run.go
+├── internal
+│    ├── accesess
+│    │   ├── access.go
+│    │   └── api.go
+│    ├── collection
+│    │   ├── collection.go
+│    │   ├── db.go
+│    │   └── pools.go
+│    ├── config
+│    │   ├── config.go
+│    │   └── environment.go
+│    ├── db
+│    │   └── db.go
+│    ├── helpers
+│    │   └── db.go
+│    └── pst
+│        ├── process.go
+│        ├── pst.go
+│        ├── pst_test.go
+│        └── server.go
+├── .gitignore
+├── docker-compose.yml
+├── go.mod
+│    └── go.sum
+├── LICENSE
+└── README.md
+```
+### Runtime:
+
+
+
+
+
 ### Prerequisites
 
 There should be Golang and Docker installed
 * Go
 * Docker
 * Git
+
 
 ### Git Clone Project
 
