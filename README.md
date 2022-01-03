@@ -74,7 +74,7 @@ log-monitoring-server
 ### Runtime:
 
 The framework has package `main`  which is under `cmd/`
-All other packages in `internal` folder. All application wide configuration is in `internal/config/config` This package utilises repository pattern for other packages and `main`
+All other packages in `internal` folder. All application wide configuration is in `internal/config` This package utilises repository pattern for other packages and `main`
 
 Program entry point is in `cmd/main.go`
 package main make sure connecting to `database` and loading all `env` variables to `AppConfig` which holds all application wide configurations.
