@@ -73,8 +73,24 @@ log-monitoring-server
 ```
 ### Runtime:
 
+The framework has package `main`  which is under `cmd/`
+All other packages in `internal` folder. All application wide configuration is in `internal/config/config` This package utilises repository pattern for other packages and `main`
 
+Program entry point is in `cmd/main.go`
+package main make sure connecting to `database` and loading all `env` variables to `AppConfig` which holds all application wide configurations.
+`ENV` files can be found under `cmd/env/*.env` we can add more files if we want.
 
+Once all `env` variables is loaded, then `main` will initialise `pubsub Fake server` which is package `pst` `(pub/sus test)`. It will run in a separate goroutine and runs it forever listening for `pub/sub` 
+
+After that `main` will call a `InitPubSubProcess` `func` from `pst` package, Which initialise `service-name pools` of given size reads from `env` variables.
+A number of `goroutines` will start `publishing` messages to pub/sub. This service will run as separate process.
+
+At this same time `Data Collection Layer`  initialise a `buffered` channels  `ReceiverJobs` , `ReceiverResult` , `LogsResult` channels.
+* A process will continuously send jobs to `ReceiverJobs` channel
+* `ReceiverResult` channel will receive messages from pub/sub. Process as batch messages and send to `LogsResult` channel Which includes `*[]Messages` and `*[]ServiceSeverity`
+* `MessageDbProcessWorker` will receive from `LogsResult` channel and `batch` insert to database as `transaction`. There will be 5 `retries` if error occurred.If all retries fail Batch message will send back to `LogsResult` channel 
+
+There is another `concurrent` web server will start at port `8080` for `Data Access Layer`
 
 
 ### Prerequisites
