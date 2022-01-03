@@ -85,7 +85,7 @@ Once all `env` variables is loaded, then `main` will initialise `pubsub Fake ser
 After that `main` will call a `InitPubSubProcess` `func` from `pst` package, Which initialise `service-name pools` of given size reads from `env` variables.
 A number of `goroutines` will start `publishing` messages to pub/sub. This service will run as separate process.
 
-At this same time `Data Collection Layer`  initialise a `buffered` channels  `ReceiverJobs` , `ReceiverResult` , `LogsResult` channels.
+At this same time `Data Collection Layer`  initialise a `buffered` channels  `ReceiverJobs` , `ReceiverResult` , `LogsResult`.
 * A process will continuously send jobs to `ReceiverJobs` channel
 * `ReceiverResult` channel will receive messages from pub/sub. Process as batch messages and send to `LogsResult` channel Which includes `*[]Messages` and `*[]ServiceSeverity`
 * `MessageDbProcessWorker` will receive from `LogsResult` channel and `batch` insert to database as `transaction`. There will be 5 `retries` if error occurred.If all retries fail Batch message will send back to `LogsResult` channel 
