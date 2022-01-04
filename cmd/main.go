@@ -16,16 +16,18 @@ import (
 	"github.com/alonzzio/log-monitoring-server/internal/collection"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
-	"log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	//"log"
 	"net/http"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 )
 
 // app holds application wide configs
 var app config.AppConfig
+var logger zerolog.Logger
 
 func main() {
 	// This go routine will shut down entire process after given duration
@@ -33,13 +35,32 @@ func main() {
 	// Only for this exercise
 	go func(d time.Duration) {
 		time.Sleep(d)
-		log.Println("Shutting down Service...")
+		logger.Info().Msg("Shutting down Service...")
+		//log.Println("Shutting down Service...")
 		os.Exit(0)
 	}(2 * time.Minute)
 
-	err := run()
+	//initialise logging
+	// Delete old if exist
+	err := os.Remove("../logs/logs.log")
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatal().Msg(err.Error())
+	}
+
+	var f *os.File
+	f, err = os.OpenFile("../logs/logs.log",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
+	}
+	defer f.Close()
+	logger = zerolog.New(f).With().Timestamp().Logger()
+
+	app.Logger.Logger = logger
+
+	err = run()
+	if err != nil {
+		logger.Fatal().Msg(err.Error())
 	}
 
 	// init repositories
@@ -88,16 +109,18 @@ func main() {
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  120 * time.Second,
 		}
-
-		log.Println(fmt.Sprintf("Data Access Server Started at port: %v ", app.Environments.DataAccessLayer.PortNumber))
-		log.Fatal(srv.ListenAndServe())
+		logger.Info().Msg("Data Access Server Started at port: %v " + app.Environments.DataAccessLayer.PortNumber)
+		servError := srv.ListenAndServe()
+		log.Fatal().Msg(servError.Error())
 	}(&wg)
 
 	// This function is just for monitoring the Go-routines Surge when Bigger number of workers in place
 	// And also used to track for Data Race
 	go func() {
 		for {
-			fmt.Println("Number of go-routines:", runtime.NumGoroutine())
+			//fmt.Println("Number of go-routines:", runtime.NumGoroutine())
+			//logger.Println("Number of go-routines:", runtime.NumGoroutine())
+			//logger.Print("test")
 			time.Sleep(10 * time.Second)
 		}
 	}()
@@ -107,12 +130,14 @@ func main() {
 	*/
 	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
-		log.Fatal("Client creation err:", err)
+		//	log.Fatal("Client creation err:", err)
+		logger.Fatal().Msg("Client creation err: " + err.Error())
 	}
 
 	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
 	if err != nil {
-		log.Fatal("Subscription creation err:", err)
+		//log.Fatal("Subscription creation err:", err)
+		logger.Fatal().Msg("Subscription creation err: " + err.Error())
 	}
 
 	go func(wg *sync.WaitGroup) {
@@ -134,5 +159,6 @@ func main() {
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
 	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, &wg)
 
+	fmt.Println("Log Monitoring Server Started.")
 	time.Sleep(2 * time.Minute)
 }

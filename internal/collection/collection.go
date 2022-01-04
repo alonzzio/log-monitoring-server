@@ -2,6 +2,7 @@ package collection
 
 import (
 	"github.com/alonzzio/log-monitoring-server/internal/config"
+	"github.com/rs/zerolog"
 )
 
 // Repository holds App config
@@ -19,6 +20,9 @@ func NewRepo(a *config.AppConfig) *Repository {
 // NewHandlers  sets the repository  for the handlers
 func NewHandlers(r *Repository) {
 	Repo = r
+	logg = r.App.Logger.Logger
 }
 
 var Repo *Repository
+
+var logg zerolog.Logger

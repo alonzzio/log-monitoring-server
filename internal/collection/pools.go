@@ -40,6 +40,7 @@ type LogsBatch struct {
 
 // ReceiverWorker receives messages from pub/sub and send it to receiverResult Channel
 func (repo *Repository) ReceiverWorker(jobs <-chan ReceiverJob, results chan<- ReceiverResult) {
+	logg.Warn().Msg("test message")
 	ctx := context.Background()
 	con := repo.App.GrpcPubSubServer.Conn
 	client, err := pubsub.NewClient(ctx, repo.App.Environments.PubSub.ProjectID, option.WithGRPCConn(con))
@@ -94,6 +95,7 @@ func (repo *Repository) CreateReceiverWorkerPools(poolSize int, jobs <-chan Rece
 
 // CreateProcessWorkerPools creates a pool of Receiver Workers
 func (repo *Repository) CreateProcessWorkerPools(poolSize int, results <-chan ReceiverResult, logsBatch chan<- LogsBatch, wg *sync.WaitGroup) {
+	logg.Warn().Msg("test message  fvdfdfdfdfd")
 	wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		// message size can be controlled through env files

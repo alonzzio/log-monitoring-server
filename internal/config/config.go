@@ -3,6 +3,7 @@ package config
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 )
 
@@ -10,6 +11,7 @@ type AppConfig struct {
 	Environments     Environments
 	Conn             *Conn
 	GrpcPubSubServer PubSubServer
+	Logger           Logger
 }
 
 type Environments struct {
@@ -36,4 +38,8 @@ type MyPool struct {
 	MaxIdleDbConn      int
 	MaxDbLifeTime      int
 	PingContextTimeout int
+}
+
+type Logger struct {
+	Logger zerolog.Logger
 }

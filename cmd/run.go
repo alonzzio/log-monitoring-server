@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/alonzzio/log-monitoring-server/internal/db"
 	"github.com/alonzzio/log-monitoring-server/internal/helpers"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -18,7 +17,8 @@ func run() error {
 		return err
 	}
 
-	log.Println("ENV files Loading...")
+	logger.Info().Msg("ENV files Loading...")
+	//logger.Info().Msg()
 	parent := filepath.Dir(p)
 
 	var fileNames []string
@@ -30,7 +30,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	log.Println("ENV Loaded.")
+	logger.Info().Msg("ENV Loaded.")
 
 	err = helpers.LoadENVtoConfig(&app)
 	if err != nil {
