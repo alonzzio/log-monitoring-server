@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/alonzzio/log-monitoring-server/internal/db"
 	"github.com/alonzzio/log-monitoring-server/internal/helpers"
+	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"os"
 	"path/filepath"
 )
@@ -11,15 +12,19 @@ import (
 // initialise and connect to database
 // Creating tables in database
 // Loading env from file to config etc.
-func run() error {
+func run(sysLogger chan<- lmslogging.Log) error {
 	p, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-
-	logger.Info().Msg("ENV files Loading...")
-	//logger.Info().Msg()
 	parent := filepath.Dir(p)
+
+	sysLogger <- lmslogging.Log{
+		SysLog:   true,
+		Severity: lmslogging.Info,
+		Prefix:   "AppInitRun",
+		Message:  "ENV variables loading",
+	}
 
 	var fileNames []string
 	fileNames, err = helpers.FindSpecificFileNames(parent+"/cmd/env", "*.env")
@@ -30,7 +35,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Info().Msg("ENV Loaded.")
+	sysLogger <- lmslogging.Log{
+		SysLog:   true,
+		Severity: lmslogging.Info,
+		Prefix:   "AppInitRun",
+		Message:  "ENV variables loaded.",
+	}
 
 	err = helpers.LoadENVtoConfig(&app)
 	if err != nil {
@@ -48,6 +58,5 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

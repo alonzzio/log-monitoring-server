@@ -15,10 +15,9 @@ import (
 	"github.com/alonzzio/log-monitoring-server/internal/access"
 	"github.com/alonzzio/log-monitoring-server/internal/collection"
 	"github.com/alonzzio/log-monitoring-server/internal/config"
+	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"github.com/alonzzio/log-monitoring-server/internal/pst"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	//"log"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -27,40 +26,34 @@ import (
 
 // app holds application wide configs
 var app config.AppConfig
-var logger zerolog.Logger
 
 func main() {
-	// This go routine will shut down entire process after given duration
-	// Sleeps until this time then exits
-	// Only for this exercise
-	go func(d time.Duration) {
-		time.Sleep(d)
-		logger.Info().Msg("Shutting down Service...")
-		//log.Println("Shutting down Service...")
-		os.Exit(0)
-	}(2 * time.Minute)
+	sysLogger := make(chan lmslogging.Log, 100)
+	sysLogs := lmslogging.LmsLogging{}
+	lg, sysFile, appFile, err := sysLogs.NewSysAndAppFileLog("../logs/system.log", "../logs/app.log")
 
-	//initialise logging
-	// Delete old if exist
-	err := os.Remove("../logs/logs.log")
-	if err != nil && !os.IsNotExist(err) {
-		log.Fatal().Msg(err.Error())
+	defer sysFile.Close()
+	defer appFile.Close()
+
+	go lg.LogWriter(sysLogger)
+
+	// Write First System Log Message
+	sysLogger <- lmslogging.Log{
+		SysLog:   true,
+		Severity: lmslogging.Info,
+		Prefix:   "LMS",
+		Message:  "<============ Log Monitoring Server ============>",
 	}
 
-	var f *os.File
-	f, err = os.OpenFile("../logs/logs.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	err = run(sysLogger)
 	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-	defer f.Close()
-	logger = zerolog.New(f).With().Timestamp().Logger()
-
-	app.Logger.Logger = logger
-
-	err = run()
-	if err != nil {
-		logger.Fatal().Msg(err.Error())
+		sysLogger <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "AppInitRun",
+			Message:  err.Error(),
+		}
+		log.Fatal(err)
 	}
 
 	// init repositories
@@ -95,11 +88,9 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, &wg, msgConf)
+	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, sysLogger, &wg, msgConf)
 
-	/*
-		Data Access Layer
-	*/
+	/* Data Access Layer */
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
 		srv := &http.Server{
@@ -109,35 +100,36 @@ func main() {
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  120 * time.Second,
 		}
-		logger.Info().Msg("Data Access Server Started at port: %v " + app.Environments.DataAccessLayer.PortNumber)
-		servError := srv.ListenAndServe()
-		log.Fatal().Msg(servError.Error())
+		sysLogger <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Info,
+			Prefix:   "DataAccessLayer",
+			Message:  "Data Access Server Started at port:" + string(app.Environments.DataAccessLayer.PortNumber),
+		}
+		log.Fatal(srv.ListenAndServe())
 	}(&wg)
 
-	// This function is just for monitoring the Go-routines Surge when Bigger number of workers in place
-	// And also used to track for Data Race
-	go func() {
-		for {
-			//fmt.Println("Number of go-routines:", runtime.NumGoroutine())
-			//logger.Println("Number of go-routines:", runtime.NumGoroutine())
-			//logger.Print("test")
-			time.Sleep(10 * time.Second)
-		}
-	}()
-
-	/*
-		Data Collection Layer
-	*/
+	/* Data Collection Layer */
 	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
-		//	log.Fatal("Client creation err:", err)
-		logger.Fatal().Msg("Client creation err: " + err.Error())
+		sysLogger <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "Publisher",
+			Message:  err.Error(),
+		}
+		log.Fatal(err)
 	}
 
 	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
 	if err != nil {
-		//log.Fatal("Subscription creation err:", err)
-		logger.Fatal().Msg("Subscription creation err: " + err.Error())
+		sysLogger <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "Publisher",
+			Message:  err.Error(),
+		}
+		log.Fatal(err)
 	}
 
 	go func(wg *sync.WaitGroup) {
@@ -154,10 +146,27 @@ func main() {
 	//n := runtime.NumCPU()
 	//if we want to change use Worker from DCL env
 	numWorkers := app.Environments.DataCollectionLayer.Workers
-	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, &wgg)
+	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, sysLogger, &wgg)
 	go collection.Repo.CreateJobsPool(jobs)
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
-	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, &wg)
+	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, sysLogger, &wg)
+
+	// This go routine will shut down entire process after given duration
+	// Sleeps until this time then exits
+	// Only for this exercise
+	go func(d time.Duration, sysLogs chan<- lmslogging.Log) {
+		time.Sleep(d)
+		fmt.Println("Shutting down Service...")
+		sysLogs <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "AppShutDown",
+			Message:  "<========= Shutting down Service... =========>",
+		}
+		// Let SysLogs write its final message
+		time.Sleep(10 * time.Millisecond)
+		os.Exit(0)
+	}(2*time.Minute, sysLogger)
 
 	fmt.Println("Log Monitoring Server Started.")
 	time.Sleep(2 * time.Minute)

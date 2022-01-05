@@ -65,7 +65,8 @@ log-monitoring-server
 │        ├── pst_test.go
 │        └── server.go
 ├── logs
-│    └── logs.go
+│    ├── app.log
+│    └── system.log
 ├── .gitignore
 ├── docker-compose.yml
 ├── go.mod
