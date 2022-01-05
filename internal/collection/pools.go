@@ -4,7 +4,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"google.golang.org/api/option"
 	"log"
 	"sync"
@@ -39,17 +39,22 @@ type LogsBatch struct {
 }
 
 // ReceiverWorker receives messages from pub/sub and send it to receiverResult Channel
-func (repo *Repository) ReceiverWorker(jobs <-chan ReceiverJob, results chan<- ReceiverResult) {
+func (repo *Repository) ReceiverWorker(jobs <-chan ReceiverJob, results chan<- ReceiverResult, logs chan<- lmslogging.Log) {
 	ctx := context.Background()
 	con := repo.App.GrpcPubSubServer.Conn
 	client, err := pubsub.NewClient(ctx, repo.App.Environments.PubSub.ProjectID, option.WithGRPCConn(con))
 	if err != nil {
-		log.Println("Error: in client:", err)
+		logs <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Error,
+			Prefix:   "Receiver",
+			Message:  err.Error(),
+		}
 		return
 	}
 	defer client.Close()
 	// pop out jobs
-	for _ = range jobs {
+	for range jobs {
 		var mu sync.Mutex
 		sub := client.Subscription(repo.App.Environments.PubSub.SubscriptionID)
 		received := 0
@@ -65,7 +70,12 @@ func (repo *Repository) ReceiverWorker(jobs <-chan ReceiverJob, results chan<- R
 			}
 		})
 		if errR != nil {
-			fmt.Println("Err in receive:", err)
+			logs <- lmslogging.Log{
+				SysLog:   true,
+				Severity: lmslogging.Error,
+				Prefix:   "Receiver",
+				Message:  err.Error(),
+			}
 			continue
 		}
 	}
@@ -80,12 +90,12 @@ func (repo *Repository) CreateJobsPool(jobs chan<- ReceiverJob) {
 }
 
 // CreateReceiverWorkerPools creates a pool of Receiver Workers
-func (repo *Repository) CreateReceiverWorkerPools(poolSize int, jobs <-chan ReceiverJob, results chan<- ReceiverResult, wg *sync.WaitGroup) {
+func (repo *Repository) CreateReceiverWorkerPools(poolSize int, jobs <-chan ReceiverJob, results chan<- ReceiverResult, logs chan<- lmslogging.Log, wg *sync.WaitGroup) {
 	wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		go func(jobs <-chan ReceiverJob, results chan<- ReceiverResult) {
 			defer wg.Done()
-			repo.ReceiverWorker(jobs, results)
+			repo.ReceiverWorker(jobs, results, logs)
 
 		}(jobs, results)
 	}

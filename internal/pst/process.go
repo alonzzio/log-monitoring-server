@@ -2,7 +2,7 @@ package pst
 
 import (
 	"context"
-	"github.com/alonzzio/log-monitoring-server/internal/helpers"
+	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"log"
 	"sync"
 )
@@ -10,18 +10,30 @@ import (
 // InitPubSubProcess will initialise pub/sub
 // Create a topic from env variable
 // Initialise and run Publishers Fake services concurrently.
-func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, w *sync.WaitGroup, serviceConfig PublisherServiceConfig) {
+func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, logs chan<- lmslogging.Log, w *sync.WaitGroup, serviceConfig PublisherServiceConfig) {
 	defer w.Done()
 	ctx := context.Background()
 	c, err := repo.NewPubSubClient(ctx, repo.App.Environments.PubSub.ProjectID)
 	if err != nil {
 		// if we encounter error we can't continue
+		logs <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "Publisher",
+			Message:  err.Error(),
+		}
 		log.Fatal(err)
 	}
 
 	err = repo.CreateTopic(ctx, repo.App.Environments.PubSub.TopicID, c)
 	if err != nil {
 		// if we encounter error we can't continue
+		logs <- lmslogging.Log{
+			SysLog:   true,
+			Severity: lmslogging.Fatal,
+			Prefix:   "Publisher",
+			Message:  err.Error(),
+		}
 		log.Fatal(err)
 	}
 	// External service fake pool
@@ -36,9 +48,15 @@ func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, 
 			defer wg.Done()
 			for {
 				m := repo.GenerateRandomMessages(serviceConfig.PerBatch, ServNamePool)
-				errP := repo.PublishBulkMessage(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
+				//errP := repo.PublishBulkMessage(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
+				errP := repo.PublishBulkMessageOld(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
 				if errP != nil {
-					log.Println("Error occurred in loop in goroutine id:", helpers.GetGoRoutineID())
+					logs <- lmslogging.Log{
+						SysLog:   true,
+						Severity: lmslogging.Error,
+						Prefix:   "Publisher",
+						Message:  errP.Error(),
+					}
 					continue
 				}
 			}
