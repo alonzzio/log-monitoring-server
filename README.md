@@ -64,7 +64,7 @@ log-monitoring-server
 │        ├── pst.go
 │        ├── pst_test.go
 │        └── server.go
-├── logs
+├── LMSlogs
 │    ├── app.log
 │    └── system.log
 ├── .gitignore

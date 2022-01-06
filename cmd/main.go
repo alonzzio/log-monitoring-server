@@ -100,6 +100,10 @@ func main() {
 	wg.Add(2)
 	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, lmsLogChan, &wg, msgConf)
 
+	type routerI interface {
+		routes()
+	}
+
 	/* Data Access Layer */
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
@@ -176,7 +180,7 @@ func main() {
 		// Let logs write its final message
 		time.Sleep(100 * time.Millisecond)
 		os.Exit(0)
-	}(2000*time.Second, lmsLogChan)
+	}(195*time.Second, lmsLogChan)
 
 	go func() {
 		for {
@@ -187,5 +191,5 @@ func main() {
 	}()
 
 	fmt.Println("Log Monitoring Server Started.")
-	time.Sleep(2000 * time.Second)
+	time.Sleep(200 * time.Second)
 }

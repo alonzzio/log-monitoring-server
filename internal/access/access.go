@@ -2,11 +2,16 @@ package access
 
 import (
 	"github.com/alonzzio/log-monitoring-server/internal/config"
+	"net/http"
 )
 
 // Repository holds App config
 type Repository struct {
 	App *config.AppConfig
+}
+
+type RepoInterface interface {
+	GetServiceSeverity(w http.ResponseWriter, r *http.Request)
 }
 
 // NewRepo initialise and return Repository Type Which holds AppConfig

@@ -4,7 +4,6 @@ import (
 	"cloud.google.com/go/pubsub"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"google.golang.org/api/option"
 	"log"
@@ -231,9 +230,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 				}
 			}
 			batch = append(batch, m)
-			//fmt.Println("cameProces")
-			fmt.Println("msgs len", len(batch))
-			//fmt.Println("serviceSev", serviceSeverity)
 		}
 
 		logsBatch <- LogsBatch{
