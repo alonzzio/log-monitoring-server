@@ -32,7 +32,7 @@ func main() {
 	// lmsLogChan chan receives logs from application/system.
 	lmsLogChan := make(chan lmslogging.Log, 100)
 	lmsLogs := lmslogging.LmsLogging{}
-	lg, sysFile, appFile, err := lmsLogs.NewSysAndAppFileLog("../logs/system.log", "../logs/app.log")
+	lg, sysFile, appFile, err := lmsLogs.NewSysAndAppFileLog("../LMSlogs/system.log", "../LMSlogs/app.log")
 
 	// app.log and system.log files
 	defer sysFile.Close()
