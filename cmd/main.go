@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -28,26 +29,36 @@ import (
 var app config.AppConfig
 
 func main() {
-	sysLogger := make(chan lmslogging.Log, 100)
-	sysLogs := lmslogging.LmsLogging{}
-	lg, sysFile, appFile, err := sysLogs.NewSysAndAppFileLog("../logs/system.log", "../logs/app.log")
+	// lmsLogChan chan receives logs from application/system.
+	lmsLogChan := make(chan lmslogging.Log, 100)
+	lmsLogs := lmslogging.LmsLogging{}
+	lg, sysFile, appFile, err := lmsLogs.NewSysAndAppFileLog("../logs/system.log", "../logs/app.log")
 
+	// app.log and system.log files
 	defer sysFile.Close()
 	defer appFile.Close()
 
-	go lg.LogWriter(sysLogger)
+	// initiate internal centralised log writing for app.log and system.log files
+	go lg.LogWriter(lmsLogChan)
 
 	// Write First System Log Message
-	sysLogger <- lmslogging.Log{
+	lmsLogChan <- lmslogging.Log{
 		SysLog:   true,
 		Severity: lmslogging.Info,
 		Prefix:   "LMS",
 		Message:  "<============ Log Monitoring Server ============>",
 	}
+	// Write First app Log Message
+	lmsLogChan <- lmslogging.Log{
+		SysLog:   false,
+		Severity: lmslogging.Info,
+		Prefix:   "LMS",
+		Message:  "<============ Log Monitoring Server ============>",
+	}
 
-	err = run(sysLogger)
+	err = run(lmsLogChan)
 	if err != nil {
-		sysLogger <- lmslogging.Log{
+		lmsLogChan <- lmslogging.Log{
 			SysLog:   true,
 			Severity: lmslogging.Fatal,
 			Prefix:   "AppInitRun",
@@ -80,7 +91,6 @@ func main() {
 	This process simulates multiple or n number of services publishing messages to the given topic.
 	We can control n and its frequency via env file.
 	As this is an external service, I assume it runs continuously.*/
-
 	msgConf := pst.PublisherServiceConfig{
 		Frequency: time.Duration(int(app.Environments.PubSub.MessageFrequency)) * time.Millisecond,
 		PerBatch:  app.Environments.PubSub.MessageBatch,
@@ -88,7 +98,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, sysLogger, &wg, msgConf)
+	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, lmsLogChan, &wg, msgConf)
 
 	/* Data Access Layer */
 	go func(wg *sync.WaitGroup) {
@@ -100,7 +110,7 @@ func main() {
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  120 * time.Second,
 		}
-		sysLogger <- lmslogging.Log{
+		lmsLogChan <- lmslogging.Log{
 			SysLog:   true,
 			Severity: lmslogging.Info,
 			Prefix:   "DataAccessLayer",
@@ -112,7 +122,7 @@ func main() {
 	/* Data Collection Layer */
 	c, err := pst.Repo.NewPubSubClient(context.Background(), app.Environments.PubSub.ProjectID)
 	if err != nil {
-		sysLogger <- lmslogging.Log{
+		lmsLogChan <- lmslogging.Log{
 			SysLog:   true,
 			Severity: lmslogging.Fatal,
 			Prefix:   "Publisher",
@@ -123,7 +133,7 @@ func main() {
 
 	_, err = pst.Repo.CreateSubscription(context.Background(), app.Environments.PubSub.SubscriptionID, app.Environments.PubSub.TopicID, c)
 	if err != nil {
-		sysLogger <- lmslogging.Log{
+		lmsLogChan <- lmslogging.Log{
 			SysLog:   true,
 			Severity: lmslogging.Fatal,
 			Prefix:   "Publisher",
@@ -146,28 +156,36 @@ func main() {
 	//n := runtime.NumCPU()
 	//if we want to change use Worker from DCL env
 	numWorkers := app.Environments.DataCollectionLayer.Workers
-	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, sysLogger, &wgg)
+	go collection.Repo.CreateReceiverWorkerPools(numWorkers, jobs, results, lmsLogChan, &wgg)
 	go collection.Repo.CreateJobsPool(jobs)
 	go collection.Repo.CreateProcessWorkerPools(numWorkers, results, logsBatch, &wg)
-	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, sysLogger, &wg)
+	go collection.Repo.CreateDbProcessWorkerPools(numWorkers, logsBatch, logsBatch, lmsLogChan, &wg)
 
 	// This go routine will shut down entire process after given duration
 	// Sleeps until this time then exits
 	// Only for this exercise
-	go func(d time.Duration, sysLogs chan<- lmslogging.Log) {
+	go func(d time.Duration, lmsLogChan chan<- lmslogging.Log) {
 		time.Sleep(d)
 		fmt.Println("Shutting down Service...")
-		sysLogs <- lmslogging.Log{
-			SysLog:   true,
+		lmsLogChan <- lmslogging.Log{
+			SysLog:   false,
 			Severity: lmslogging.Fatal,
 			Prefix:   "AppShutDown",
 			Message:  "<========= Shutting down Service... =========>",
 		}
-		// Let SysLogs write its final message
-		time.Sleep(10 * time.Millisecond)
+		// Let logs write its final message
+		time.Sleep(100 * time.Millisecond)
 		os.Exit(0)
-	}(2*time.Minute, sysLogger)
+	}(2000*time.Second, lmsLogChan)
+
+	go func() {
+		for {
+			fmt.Println("No of Go Routines:", runtime.NumGoroutine())
+			time.Sleep(1 * time.Second)
+		}
+
+	}()
 
 	fmt.Println("Log Monitoring Server Started.")
-	time.Sleep(2 * time.Minute)
+	time.Sleep(2000 * time.Second)
 }

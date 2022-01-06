@@ -104,6 +104,7 @@ func (l *LmsLogging) LogWriter(logs <-chan Log) {
 				default:
 				}
 			}
+		default:
 		}
 	}
 }

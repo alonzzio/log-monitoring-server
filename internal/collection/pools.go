@@ -4,6 +4,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"google.golang.org/api/option"
 	"log"
@@ -152,7 +153,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Debug"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Info":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Info"
@@ -172,7 +172,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Info"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Warn":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Warn"
@@ -211,7 +210,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Error"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Fatal":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Fatal"
@@ -232,8 +230,10 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					serviceSeverity = append(serviceSeverity, ss)
 				}
 			}
-
 			batch = append(batch, m)
+			//fmt.Println("cameProces")
+			fmt.Println("msgs len", len(batch))
+			//fmt.Println("serviceSev", serviceSeverity)
 		}
 
 		logsBatch <- LogsBatch{

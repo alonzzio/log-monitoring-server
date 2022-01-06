@@ -12,14 +12,14 @@ import (
 // initialise and connect to database
 // Creating tables in database
 // Loading env from file to config etc.
-func run(sysLogger chan<- lmslogging.Log) error {
+func run(lmsLogChan chan<- lmslogging.Log) error {
 	p, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	parent := filepath.Dir(p)
 
-	sysLogger <- lmslogging.Log{
+	lmsLogChan <- lmslogging.Log{
 		SysLog:   true,
 		Severity: lmslogging.Info,
 		Prefix:   "AppInitRun",
@@ -35,7 +35,7 @@ func run(sysLogger chan<- lmslogging.Log) error {
 	if err != nil {
 		return err
 	}
-	sysLogger <- lmslogging.Log{
+	lmsLogChan <- lmslogging.Log{
 		SysLog:   true,
 		Severity: lmslogging.Info,
 		Prefix:   "AppInitRun",
