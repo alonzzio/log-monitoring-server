@@ -1,4 +1,1 @@
-{"level":"info","Origin":"LMS","time":"2022-01-06T20:49:42+10:30","message":"<============ Log Monitoring Server ============>"}
-{"level":"info","Origin":"AppInitRun","time":"2022-01-06T20:49:42+10:30","message":"ENV variables loading"}
-{"level":"info","Origin":"AppInitRun","time":"2022-01-06T20:49:42+10:30","message":"ENV variables loaded."}
-{"level":"info","Origin":"DataAccessLayer","time":"2022-01-06T20:49:42+10:30","message":"Data Access Server Started at port:8080"}
+
