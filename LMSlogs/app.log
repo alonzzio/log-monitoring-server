@@ -1,0 +1,34 @@
+{"level":"info","Origin":"LMS","time":"2022-01-07T14:25:55+10:30","message":"<============ Log Monitoring Server ============>"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T14:25:55+10:30","message":"Publisher Service Started: id 0"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T14:25:55+10:30","message":"Publisher Service Started: id 1"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:15+10:30","message":"Successfully inserted 1000 Messages and 434 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:16+10:30","message":"Successfully inserted 1000 Messages and 432 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:38+10:30","message":"Successfully inserted 1000 Messages and 432 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:39+10:30","message":"Successfully inserted 1000 Messages and 435 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:58+10:30","message":"Successfully inserted 1000 Messages and 429 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:26:59+10:30","message":"Successfully inserted 1000 Messages and 433 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:16+10:30","message":"Successfully inserted 1000 Messages and 436 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:16+10:30","message":"Successfully inserted 1000 Messages and 434 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:37+10:30","message":"Successfully inserted 1000 Messages and 418 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:37+10:30","message":"Successfully inserted 1000 Messages and 425 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:57+10:30","message":"Successfully inserted 1000 Messages and 427 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:27:57+10:30","message":"Successfully inserted 1000 Messages and 424 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:16+10:30","message":"Successfully inserted 1000 Messages and 436 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:16+10:30","message":"Successfully inserted 1000 Messages and 427 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:33+10:30","message":"Successfully inserted 1000 Messages and 415 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:33+10:30","message":"Successfully inserted 1000 Messages and 428 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:50+10:30","message":"Successfully inserted 1000 Messages and 426 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:28:51+10:30","message":"Successfully inserted 1000 Messages and 446 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:29:07+10:30","message":"Successfully inserted 1000 Messages and 425 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T14:29:07+10:30","message":"Successfully inserted 1000 Messages and 430 Severity logs"}
+{"level":"fatal","Origin":"AppShutDown","time":"2022-01-07T14:29:10+10:30","message":"<========= Shutting down Service... =========>"}
+{"level":"info","Origin":"LMS","time":"2022-01-07T15:02:54+10:30","message":"<============ Log Monitoring Server ============>"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T15:02:55+10:30","message":"Publisher Service Started: id 0"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T15:02:55+10:30","message":"Publisher Service Started: id 1"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T15:03:07+10:30","message":"Successfully inserted 1000 Messages and 439 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T15:03:08+10:30","message":"Successfully inserted 1000 Messages and 431 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T15:03:20+10:30","message":"Successfully inserted 1000 Messages and 434 Severity logs"}
+{"level":"info","Origin":"DbProcess","time":"2022-01-07T15:03:21+10:30","message":"Successfully inserted 1000 Messages and 438 Severity logs"}
+{"level":"info","Origin":"LMS","time":"2022-01-07T15:03:32+10:30","message":"<============ Log Monitoring Server ============>"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T15:03:32+10:30","message":"Publisher Service Started: id 0"}
+{"level":"info","Origin":"Publisher","time":"2022-01-07T15:03:32+10:30","message":"Publisher Service Started: id 1"}
