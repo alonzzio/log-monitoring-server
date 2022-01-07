@@ -3,125 +3,147 @@ package access
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/jackskj/carta"
 	"net/http"
 	"time"
 )
 
 // ServerPing pings the server
 func (repo *Repository) ServerPing(w http.ResponseWriter, r *http.Request) {
-	_, _ = fmt.Fprintf(w, "Welcome to Data Access Layer")
-	return
-}
-
-// GetServices statistics of services
-func (repo *Repository) GetServices(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	type Result struct {
-		Status     int         `json:"status"`
-		StatusText string      `json:"status_text"`
-		Response   interface{} `json:"services"`
-	}
-
-	type Service struct {
-		Name string `json:"name"  db:"service_name"`
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	s := `SELECT 
-			COALESCE(service_name,'') AS service_name
-			FROM lms.service_severity 
-			GROUP BY service_name 
-			ORDER BY service_name;`
-	rows, err := repo.App.Conn.DB.QueryContext(ctx, s)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, fmt.Sprintf("Internal Server Error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	serv := make([]Service, 0)
-
-	err = carta.Map(rows, &serv)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, fmt.Sprintf("Internal Server Error: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-
-	resp := Result{
-		Status:     200,
-		StatusText: "ok",
-		Response:   serv,
+	type Result struct {
+		Status     int    `json:"status"`
+		StatusText string `json:"status_text"`
 	}
+	resp := Result{
+		Status:     http.StatusOK,
+		StatusText: "Welcome to Data Access Layer",
+	}
+
 	_ = json.NewEncoder(w).Encode(resp)
 	return
+
 }
 
-// GetSingleServiceSeverity statistics of  a services
-// TODO BUG FIX
-func (repo *Repository) GetSingleServiceSeverity(w http.ResponseWriter, r *http.Request) {
+// GetServiceSeverity statistics of  a services
+func (repo *Repository) GetServiceSeverity(w http.ResponseWriter, r *http.Request) {
 	var err error
+	w.Header().Set("Content-Type", "application/json")
 
 	type Result struct {
-		Status     int         `json:"status"`
-		StatusText string      `json:"status_text"`
-		Response   interface{} `json:"services_severity"`
-	}
-	type Count struct {
-		CountInBatch *int       `json:"count"  db:"count"`
-		CreatedAt    *time.Time `json:"created_at"  db:"created_at"`
+		Status          int         `json:"status"`
+		StatusText      string      `json:"status_text"`
+		Service         interface{} `json:"services,omitempty"`
+		ServiceSeverity interface{} `json:"services_severity,omitempty"`
 	}
 
-	type SeverityName struct {
-		Severity   *string  `json:"severity"  db:"severity"`
-		BatchCount *[]Count `json:"batch_count"  db:"batch_count"`
+	type ServiceLogs struct {
+		ServiceName string `json:"severity_name"  db:"severity_name"`
+		Severity    string `json:"service_severity"  db:"service_severity"`
+		Count       int    `json:"count"  db:"count"`
 	}
 
-	type ServiceName struct {
-		Name         *string         `json:"name"  db:"service_name"`
-		SeverityName *[]SeverityName `json:"severity_name"  db:"severity_name"`
+	type ServiceSeverity struct {
+		ServiceName string `json:"severity_name"  db:"severity_name"`
+		Severity    string `json:"service_severity"  db:"service_severity"`
+		Count       int    `json:"count"  db:"count"`
 	}
 
 	servName := r.FormValue("service-name")
-	fmt.Println(servName)
+	severity := r.FormValue("severity")
+
+	if len(servName) < 1 {
+		resp := Result{
+			Status:     http.StatusBadRequest,
+			StatusText: "Service name not supplied",
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	if len(severity) < 1 {
+		resp := Result{
+			Status:     http.StatusBadRequest,
+			StatusText: "severity not supplied",
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	s := `SELECT service_name,severity,count,created_at
-			FROM lms.service_severity
-			WHERE service_name = ?
-			ORDER BY severity;`
+	// Service severity table check
+	s := `SELECT COALESCE (SUM(x.COUNT),0) AS cc FROM lms.service_severity x
+		  WHERE (x.service_name = ?) AND (x.severity = ?);`
 
-	rows, err := repo.App.Conn.DB.QueryContext(ctx, s, servName)
+	servCount := 0
+	err = repo.App.Conn.DB.QueryRowContext(ctx, s, servName, severity).Scan(&servCount)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, fmt.Sprintf("Internal Server Error: %v", err), http.StatusInternalServerError)
+		resp := Result{
+			Status:          http.StatusInternalServerError,
+			StatusText:      "Error:" + err.Error(),
+			Service:         nil,
+			ServiceSeverity: nil,
+		}
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	serv := make([]ServiceName, 0)
+	//	service table check
+	s = `SELECT COALESCE(COUNT(x.SERVICE_NAME),0) AS cc FROM lms.service_logs x
+	     WHERE (x.service_name = ?) AND (x.severity = ?);`
 
-	err = carta.Map(rows, &serv)
+	SeverityCount := 0
+	err = repo.App.Conn.DB.QueryRowContext(ctx, s, servName, severity).Scan(&SeverityCount)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, fmt.Sprintf("Internal Server Error: %v", err), http.StatusInternalServerError)
+		resp := Result{
+			Status:     http.StatusInternalServerError,
+			StatusText: "Error:" + err.Error(),
+		}
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	resp := Result{
-		Status:     200,
-		StatusText: "ok",
-		Response:   serv,
+	if servCount == 0 && SeverityCount == 0 {
+		resp := Result{
+			Status:     http.StatusOK,
+			StatusText: "Service and Severity not found! OK",
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	} else if servCount == SeverityCount {
+		resp := Result{
+			Status:     http.StatusOK,
+			StatusText: "Service and Severity count match! OK",
+			Service: ServiceLogs{
+				ServiceName: servName,
+				Severity:    severity,
+				Count:       servCount,
+			},
+			ServiceSeverity: ServiceSeverity{
+				ServiceName: servName,
+				Severity:    severity,
+				Count:       SeverityCount,
+			},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+	} else {
+		resp := Result{
+			Status:     http.StatusOK,
+			StatusText: "Service and Severity not match! NOT OK!",
+			Service: ServiceLogs{
+				ServiceName: servName,
+				Severity:    severity,
+				Count:       servCount,
+			},
+			ServiceSeverity: ServiceSeverity{
+				ServiceName: servName,
+				Severity:    severity,
+				Count:       SeverityCount,
+			},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+		return
 	}
-	_ = json.NewEncoder(w).Encode(resp)
-	return
 }

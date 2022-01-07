@@ -2,6 +2,7 @@ package pst
 
 import (
 	"context"
+	"fmt"
 	"github.com/alonzzio/log-monitoring-server/internal/lmslogging"
 	"log"
 	"sync"
@@ -38,9 +39,7 @@ func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, 
 	}
 	// External service fake pool
 	ServNamePool := repo.GenerateServicesPool(serviceNamePoolSize)
-
 	var wg sync.WaitGroup
-
 	wg.Add(int(publishers))
 
 	for i := uint(0); i < publishers; i++ {
@@ -48,9 +47,9 @@ func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, 
 			defer wg.Done()
 			for {
 				m := repo.GenerateRandomMessages(serviceConfig.PerBatch, ServNamePool)
-				//errP := repo.PublishBulkMessage(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
-				errP := repo.PublishBulkMessageOld(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
+				errP := repo.PublishBulkMessage(repo.App.Environments.PubSub.TopicID, m, c, serviceConfig)
 				if errP != nil {
+					fmt.Println("errr", errP)
 					logs <- lmslogging.Log{
 						SysLog:   true,
 						Severity: lmslogging.Error,
@@ -62,6 +61,12 @@ func (repo *Repository) InitPubSubProcess(publishers, serviceNamePoolSize uint, 
 			}
 		}(&wg)
 
+		logs <- lmslogging.Log{
+			SysLog:   false,
+			Severity: lmslogging.Info,
+			Prefix:   "Publisher",
+			Message:  fmt.Sprintf("Publisher Service Started: id %v", i),
+		}
 		go func() {
 			wg.Wait()
 		}()

@@ -74,12 +74,12 @@ func (repo *Repository) GetRandomSeverity(min, max int) Severity {
 
 // GetRandomServiceName generates random service name for the message
 // this function generates random string only
-func (repo *Repository) GetRandomServiceName(s *[]string) string {
+func (repo *Repository) GetRandomServiceName(s []string) string {
 	min := 0
-	max := len(*s) - 1
+	max := len(s) - 1
 	rand.Seed(time.Now().UnixNano())
 	i := rand.Intn(max-min+1) + min
-	v := (*s)[i]
+	v := s[i]
 	return v
 }
 
@@ -100,32 +100,6 @@ func (repo *Repository) GetRandomServiceName(s *[]string) string {
 //	}
 //	return nil
 //}
-
-// PublishBulkMessage publishes a message to given topic
-func (repo *Repository) PublishBulkMessageOld(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
-	t := c.Topic(topic)
-	ctx := context.Background()
-	defer t.Stop()
-	for _, m := range *msg {
-		var results []*pubsub.PublishResult
-		out, err := json.Marshal(m)
-		if err != nil {
-			return err
-		}
-
-		pr := t.Publish(ctx, &pubsub.Message{Data: out})
-		results = append(results, pr)
-		for _, rr := range results {
-			_, errGet := rr.Get(ctx) // _ is id
-			if errGet != nil {
-				return errGet
-			}
-			//fmt.Printf("Published a message with a message ID: %s\n", id)
-		}
-		time.Sleep(msgConfig.Frequency)
-	}
-	return nil
-}
 
 // PublishBulkMessage publishes a message to given topic
 func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
@@ -152,6 +126,32 @@ func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubs
 	}
 	return nil
 }
+
+//// PublishBulkMessage publishes a message to given topic
+//func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
+//	t := c.Topic(topic)
+//	ctx := context.Background()
+//	defer t.Stop()
+//	for _, m := range *msg {
+//		var results []*pubsub.PublishResult
+//		out, err := json.Marshal(m)
+//		if err != nil {
+//			return err
+//		}
+//
+//		pr := t.Publish(ctx, &pubsub.Message{Data: out})
+//		results = append(results, pr)
+//		for _, rr := range results {
+//			_, errGet := rr.Get(ctx) // _ is id
+//			if errGet != nil {
+//				return errGet
+//			}
+//			//fmt.Printf("Published a message with a message ID: %s\n", id)
+//		}
+//		time.Sleep(msgConfig.Frequency)
+//	}
+//	return nil
+//}
 
 // NewPubSubClient creates a new client connection for pub/sub
 func (repo *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
@@ -186,7 +186,7 @@ func (repo *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub
 
 // GenerateRandomMessages for the pub sub
 // it creates multiple messages as slice
-func (repo *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *[]Message {
+func (repo *Repository) GenerateRandomMessages(n uint, serviceNames []string) *[]Message {
 	m := make([]Message, 0)
 	for i := uint(0); i < n; i++ {
 		//compose message
@@ -202,7 +202,7 @@ func (repo *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *
 }
 
 // GenerateARandomMessage for the pub sub
-func (repo *Repository) GenerateARandomMessage(serviceNames *[]string) *Message {
+func (repo *Repository) GenerateARandomMessage(serviceNames []string) *Message {
 	//compose message
 	return &Message{
 		ServiceName: repo.GetRandomServiceName(serviceNames),
@@ -233,10 +233,10 @@ func (repo *Repository) SeverityToString(s Severity) string {
 
 // GenerateServicesPool generate some service name for this exercise
 // This function generates "Service-name:1" "Service-name:2"...
-func (repo *Repository) GenerateServicesPool(n uint) *[]string {
+func (repo *Repository) GenerateServicesPool(n uint) []string {
 	var s []string
 	for i := uint(0); i < n; i++ {
 		s = append(s, fmt.Sprintf("Service-name:%v", i+1))
 	}
-	return &s
+	return s
 }

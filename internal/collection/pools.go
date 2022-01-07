@@ -31,11 +31,11 @@ type ReceiverResult struct {
 	Data []byte
 }
 
-type Logs *[]Message
+type Logs []Message
 
 type LogsBatch struct {
-	LogMessage      *[]Message
-	ServiceSeverity *[]ServiceSeverity
+	LogMessage      []Message
+	ServiceSeverity []ServiceSeverity
 }
 
 // ReceiverWorker receives messages from pub/sub and send it to receiverResult Channel
@@ -152,7 +152,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Debug"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Info":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Info"
@@ -172,7 +171,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Info"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Warn":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Warn"
@@ -211,7 +209,6 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					ss.Severity = "Error"
 					serviceSeverity = append(serviceSeverity, ss)
 				}
-
 			case "Fatal":
 				if len(serviceSeverity) == 0 {
 					ss.Severity = "Fatal"
@@ -232,13 +229,12 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 					serviceSeverity = append(serviceSeverity, ss)
 				}
 			}
-
 			batch = append(batch, m)
 		}
 
 		logsBatch <- LogsBatch{
-			LogMessage:      &batch,
-			ServiceSeverity: &serviceSeverity,
+			LogMessage:      batch,
+			ServiceSeverity: serviceSeverity,
 		}
 	}
 }
