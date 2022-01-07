@@ -89,7 +89,7 @@ When app init repository will initialise and share its `pointer` across packages
 Processing `pub/sub` is a independent service which will continuously publish messages to pub/sub.(its `frequency` and `message per publish` and number of publish `workers` pool can be configured through `env`)
 
 Processing `Data Collection Layer` reads messages from `pub/sub` and send to a buffered `channel`. Another process will make queues and sort to message and severity together send to another channel.
-A BD process will read this processed messages and severity from the channel and insert to `DB` as a `transaction`.If any fail from DB. It will retry. and a statics log will write to `app.log` file. `(LMSlogging/)`
+A DB process will read this processed messages and severity from the channel and insert to `DB` as a `transaction`.If any fail from DB. It will retry. and a statics log will write to `app.log` file. `(LMSlogging/)`
 All other System logs will write to `system.log`.
 
 `Message per batch` number of concurrent `workers` can ve configured through env.
