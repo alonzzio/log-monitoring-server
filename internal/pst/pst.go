@@ -83,24 +83,6 @@ func (repo *Repository) GetRandomServiceName(s []string) string {
 	return v
 }
 
-//// PublishMessage publishes a message to given topic
-//func (repo *Repository) PublishMessage(topic string, m Message, c *pubsub.Client) error {
-//	t := c.Topic(topic)
-//	ctx := context.Background()
-//	defer t.Stop()
-//	var results []*pubsub.PublishResult
-//	pr := t.Publish(ctx, &pubsub.Message{Data: []byte(fmt.Sprintf("%v", m))})
-//	results = append(results, pr)
-//	for _, rr := range results {
-//		id, err := rr.Get(ctx)
-//		if err != nil {
-//			return err
-//		}
-//		fmt.Printf("Published a message with a message ID: %s\n", id)
-//	}
-//	return nil
-//}
-
 // PublishBulkMessage publishes a message to given topic
 func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
 	t := c.Topic(topic)
@@ -127,31 +109,6 @@ func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubs
 	return nil
 }
 
-//// PublishBulkMessage publishes a message to given topic
-//func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
-//	t := c.Topic(topic)
-//	ctx := context.Background()
-//	defer t.Stop()
-//	for _, m := range *msg {
-//		var results []*pubsub.PublishResult
-//		out, err := json.Marshal(m)
-//		if err != nil {
-//			return err
-//		}
-//
-//		pr := t.Publish(ctx, &pubsub.Message{Data: out})
-//		results = append(results, pr)
-//		for _, rr := range results {
-//			_, errGet := rr.Get(ctx) // _ is id
-//			if errGet != nil {
-//				return errGet
-//			}
-//			//fmt.Printf("Published a message with a message ID: %s\n", id)
-//		}
-//		time.Sleep(msgConfig.Frequency)
-//	}
-//	return nil
-//}
 
 // NewPubSubClient creates a new client connection for pub/sub
 func (repo *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
