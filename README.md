@@ -76,6 +76,7 @@ log-monitoring-server
 ```
 ### Runtime:
 
+
 Frame works using `Repository pattern` for Global variable sharing.
 All `internal` packages are inside `internal/`
 Working directory under `cmd/`
@@ -151,7 +152,6 @@ _Clone the project from github._
          ```shell
             {"status":200,"status_text":"Service and Severity count match! OK","services":{"severity_name":"Service-name:1","service_severity":"Info","count":2},"services_severity":{"severity_name":"Service-name:1","service_severity":"Info","count":2}}
           ```
-
       7. Do everything together (No API Test)
          ```sh
          make all
