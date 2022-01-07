@@ -76,25 +76,26 @@ log-monitoring-server
 ```
 ### Runtime:
 
-The framework has package `main`  which is under `cmd/`
-All other packages in `internal` folder. All application wide configuration is in `internal/config/config` This package utilises repository pattern for other packages and `main`
+Frame works using `Repository pattern` for Global variable sharing.
+All `internal` packages are inside `internal/`
+Working directory under `cmd/`
+Env files directory `cmd/env/`
 
-Program entry point is in `cmd/main.go`
-package main make sure connecting to `database` and loading all `env` variables to `AppConfig` which holds all application wide configurations.
-`ENV` files can be found under `cmd/env/*.env` we can add more files if we want.
+Every internal package has embedded Repository struct and all functions are method of `Repository`
 
-Once all `env` variables is loaded, then `main` will initialise `pubsub Fake server` which is package `pst` `(pub/sus test)`. It will run in a separate goroutine and runs it forever listening for `pub/sub` 
+When app init repository will initialise and share its `pointer` across packages.
 
-After that `main` will call a `InitPubSubProcess` `func` from `pst` package, Which initialise `service-name pools` of given size reads from `env` variables.
-A number of `goroutines` will start `publishing` messages to pub/sub. This service will run as separate process.
+Processing `pub/sub` is a independent service which will continuously publish messages to pub/sub.(its `frequency` and `message per publish` and number of publish `workers` pool can be configured through `env`)
 
-At this same time `Data Collection Layer`  initialise a `buffered` channels  `ReceiverJobs` , `ReceiverResult` , `LogsResult` channels.
-* A process will continuously send jobs to `ReceiverJobs` channel
-* `ReceiverResult` channel will receive messages from pub/sub. Process as batch messages and send to `LogsResult` channel Which includes `*[]Messages` and `*[]ServiceSeverity`
-* `MessageDbProcessWorker` will receive from `LogsResult` channel and `batch` insert to database as `transaction`. There will be 5 `retries` if error occurred.If all retries fail Batch message will send back to `LogsResult` channel 
+Processing `Data Collection Layer` reads messages from `pub/sub` and send to a buffered `channel`. Another process will make queues and sort to message and severity together send to another channel.
+A BD process will read this processed messages and severity from the channel and insert to `DB` as a `transaction`.If any fail from DB. It will retry. and a statics log will write to `app.log` file. `(LMSlogging/)`
+All other System logs will write to `system.log`.
 
-There is another `concurrent` web server will start at port `8080` for `Data Access Layer`
+`Message per batch` number of concurrent `workers` can ve configured through env.
 
+* _docker test is not used in this project. However, MYSQL docker image is used._
+* _Docker-compose.yml will take care of Mysql and create lms database._
+* _Every re-run of the project will truncate the data from table for testing_
 
 ### Prerequisites
 
@@ -117,118 +118,56 @@ _Clone the project from github._
    ```sh
    cd cmd
    ```
-4. Test,Build and Run using `Makefile`
+   1. Test,Build and Run using `Makefile`
 
-   1. Docker Compose download and run Mysql image
-      ```sh
-      make docker-up
-      ```
-   2. Download Dependencies for Golang
-      ```sh
-      make dep
-      ```
-   3. Test
-      ```sh
-      make test
-      ```
-   4. Build
-      ```sh
-      make build
-      ```
-   5. Run
-      ```sh
-      make run
-      ``` 
-   6. Do everything together
-      ```sh
-      make all
-      ``` 
-   7. Docker kill container
-      ```sh
-      make docker-kill
-      ``` 
-   8. Clean docker container
-      ```sh
-      make docker-clean
-      ``` 
+      1. Docker Compose download and run Mysql image
+         ```sh
+         make docker-up
+         ```
+      2. Download Dependencies for Golang
+         ```sh
+         make dep
+         ```
+      3. Test
+         ```sh
+         make test
+         ```
+      4. Build
+         ```sh
+         make build
+         ```
+      5. Run
+         ```sh
+         make run
+         ``` 
+      6. API testing
+         Where SN argument is `Service-Name:` and `S` is severity
+         ```sh
+         make run-api SN="1" S="Info"
+         ``` 
+         We can try different numbers and Severity to in the arguments.
+      
+         Result:
+         ```shell
+            {"status":200,"status_text":"Service and Severity count match! OK","services":{"severity_name":"Service-name:1","service_severity":"Info","count":2},"services_severity":{"severity_name":"Service-name:1","service_severity":"Info","count":2}}
+          ```
+
+      7. Do everything together (No API Test)
+         ```sh
+         make all
+         ``` 
+      8. Docker kill container
+         ```sh
+         make docker-kill
+         ``` 
+      9. Clean docker container
+         ```sh
+         make docker-clean
+         ``` 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-## Data Access Layer 
-Server running at local host port `8080` address: `localhost:8080` Port number can be configured though env files.
 
-   ping is just a ping to the server
-   eg:
-   `cURL`
-
-   ```sh
-   curl -X GET \
-   http://localhost:8080/ping \
-   -H 'cache-control: no-cache' \
-   ``` 
-   Response Will Be:
-
-   ```sh
-   Welcome to Data Access Layer% 
-   ```
-
-   To get all Service names in the DB:
-
-   ```shell
-   curl -X GET \
-     http://localhost:8080/services \
-     -H 'cache-control: no-cache' \
-   ```
-
-   Response:
-
-```json
-   {
-       "status": 200,
-       "status_text": "ok",
-       "services": [
-           {
-               "name": "Service-name:1"
-           },
-           {
-               "name": "Service-name:10"
-           },
-           {
-               "name": "Service-name:2"
-           },
-           {
-               "name": "Service-name:3"
-           },
-           {
-               "name": "Service-name:4"
-           },
-           {
-               "name": "Service-name:5"
-           },
-           {
-               "name": "Service-name:6"
-           },
-           {
-               "name": "Service-name:7"
-           },
-           {
-               "name": "Service-name:8"
-           },
-           {
-               "name": "Service-name:9"
-           }
-       ]
-   }
-   ```
- _Note: This is just a demo service names_
-
-### Data Access Layer API is being written.
-Comparing or Analytical API's is not Ready
-
-
-
-
-<!-- Configure -->
 ## Configure Project ENV
 
 WE can configure most of the Environment variables `./cmd/env/*.env` files
@@ -243,15 +182,74 @@ _Note:Multiple env files is supported. Extensions of the file should be `*.ENV`_
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Data Access Layer
+Server running at local host port `8080` address: `localhost:8080` Port number can be configured though env files.
 
-## Testing Files not complete.
-I Will add more testing in coming days
+ping is just a ping to the server
+eg:
+`cURL`
 
+   ```sh
+   curl -X GET \
+   http://localhost:8080/ping \
+   -H 'cache-control: no-cache' \
+   ``` 
+Response Will Be:
 
-<!-- Repository -->
-## Repository
+   ```json
+{
+    "status": 200,
+    "status_text": "Welcome to Data Access Layer"
+}
+   ```
 
+To get all Service names in the DB:
+`"severity_name"` is `"Service-name:2"` and
+`Severity` as `Info`
 
-Project Link: [https://github.com/alonzzio/log-monitoring-server](https://github.com/alonzzio/log-monitoring-server)
+   ```shell
+curl --location --request GET 'localhost:8080/service-severity-stat?service-name=Service-name:2&severity=Info' \
+--data-raw ''
+   ```
 
+Sample Response if found:
+
+```json
+{
+   "status": 200,
+   "status_text": "Service and Severity count match! OK",
+   "services": {
+      "severity_name": "Service-name:2",
+      "service_severity": "Info",
+      "count": 8
+   },
+   "services_severity": {
+      "severity_name": "Service-name:2",
+      "service_severity": "Info",
+      "count": 8
+   }
+}
+   ```
+
+If not found:
+```json
+{
+    "status": 200,
+    "status_text": "Service and Severity not found! OK"
+}
+```
+If service name not supplied:
+```json
+{
+    "status": 400,
+    "status_text": "Service name not supplied"
+}
+```
+If severity not supplied:
+```json
+{
+   "status": 400,
+   "status_text": "severity not supplied"
+}
+```
 <p align="right">(<a href="#top">back to top</a>)</p>

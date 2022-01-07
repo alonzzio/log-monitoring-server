@@ -24,6 +24,11 @@ clean:
 run:
 		$(GOBUILD) -o $(BINARY_NAME) -v ./...
 		./$(BINARY_NAME)
+
+run-api:
+	curl --location --request GET 'localhost:8080/service-severity-stat?service-name=Service-name:$(SN)&severity=$(S)' \
+    --data-raw ''
+
 dep:
 	$(GOMOD) download
 
@@ -37,5 +42,7 @@ docker-kill:
 
 docker-clean:
 	docker container rm --force mysql-database
+
+
 
 

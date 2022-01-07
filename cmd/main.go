@@ -20,7 +20,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -178,13 +177,14 @@ func main() {
 		os.Exit(0)
 	}(195*time.Second, lmsLogChan)
 
-	go func() {
-		for {
-			fmt.Println("No of Go Routines:", runtime.NumGoroutine())
-			time.Sleep(1 * time.Second)
-		}
-
-	}()
+	//Go routine Info for Debugging
+	//go func() {
+	//	for {
+	//		fmt.Println("No of Go Routines:", runtime.NumGoroutine())
+	//		time.Sleep(1 * time.Second)
+	//	}
+	//
+	//}()
 
 	fmt.Println("Log Monitoring Server Started.")
 	time.Sleep(200 * time.Second)
