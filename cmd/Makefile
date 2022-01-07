@@ -16,7 +16,7 @@ all: docker-up dep test build run
 build:
 		$(GOBUILD) -o $(BINARY_NAME) -v
 test:
-		$(GOTEST) -v ../...
+		$(GOTEST) -v ../... -v
 clean:
 		$(GOCLEAN)
 		rm -f $(BINARY_NAME)
