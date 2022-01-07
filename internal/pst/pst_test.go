@@ -8,7 +8,7 @@ import (
 func TestGenerateServicesPool(t *testing.T) {
 	r := Repo
 	got := r.GenerateServicesPool(2)
-	assert.Len(t, *got, 2)
+	assert.Len(t, got, 2)
 }
 
 func TestSeverityToString(t *testing.T) {
