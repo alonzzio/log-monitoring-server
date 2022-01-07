@@ -74,12 +74,12 @@ func (repo *Repository) GetRandomSeverity(min, max int) Severity {
 
 // GetRandomServiceName generates random service name for the message
 // this function generates random string only
-func (repo *Repository) GetRandomServiceName(s *[]string) string {
+func (repo *Repository) GetRandomServiceName(s []string) string {
 	min := 0
-	max := len(*s) - 1
+	max := len(s) - 1
 	rand.Seed(time.Now().UnixNano())
 	i := rand.Intn(max-min+1) + min
-	v := (*s)[i]
+	v := s[i]
 	return v
 }
 
@@ -186,7 +186,7 @@ func (repo *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub
 
 // GenerateRandomMessages for the pub sub
 // it creates multiple messages as slice
-func (repo *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *[]Message {
+func (repo *Repository) GenerateRandomMessages(n uint, serviceNames []string) *[]Message {
 	m := make([]Message, 0)
 	for i := uint(0); i < n; i++ {
 		//compose message
@@ -202,7 +202,7 @@ func (repo *Repository) GenerateRandomMessages(n uint, serviceNames *[]string) *
 }
 
 // GenerateARandomMessage for the pub sub
-func (repo *Repository) GenerateARandomMessage(serviceNames *[]string) *Message {
+func (repo *Repository) GenerateARandomMessage(serviceNames []string) *Message {
 	//compose message
 	return &Message{
 		ServiceName: repo.GetRandomServiceName(serviceNames),
@@ -233,10 +233,10 @@ func (repo *Repository) SeverityToString(s Severity) string {
 
 // GenerateServicesPool generate some service name for this exercise
 // This function generates "Service-name:1" "Service-name:2"...
-func (repo *Repository) GenerateServicesPool(n uint) *[]string {
+func (repo *Repository) GenerateServicesPool(n uint) []string {
 	var s []string
 	for i := uint(0); i < n; i++ {
 		s = append(s, fmt.Sprintf("Service-name:%v", i+1))
 	}
-	return &s
+	return s
 }

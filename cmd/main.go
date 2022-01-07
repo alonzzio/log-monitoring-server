@@ -100,10 +100,6 @@ func main() {
 	wg.Add(2)
 	go pst.Repo.InitPubSubProcess(app.Environments.PubSub.ServicePublishers, app.Environments.PubSub.ServiceNamePool, lmsLogChan, &wg, msgConf)
 
-	type routerI interface {
-		routes()
-	}
-
 	/* Data Access Layer */
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()

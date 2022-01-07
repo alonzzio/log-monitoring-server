@@ -26,8 +26,8 @@ func (repo *Repository) MessageDbProcessWorker(logsBatchReceive <-chan LogsBatch
 		case lb := <-logsBatchReceive:
 			retry := 5
 			success := false
-			msgSize := len(*lb.LogMessage)
-			severitySize := len(*lb.ServiceSeverity)
+			msgSize := len(lb.LogMessage)
+			severitySize := len(lb.ServiceSeverity)
 			for i := 0; i < retry; i++ {
 				err := repo.BulkDbInsert(lb.LogMessage, lb.ServiceSeverity)
 				if err != nil {
@@ -69,10 +69,10 @@ func (repo *Repository) MessageDbProcessWorker(logsBatchReceive <-chan LogsBatch
 }
 
 // BulkDbInsert inserts batch data
-func (repo *Repository) BulkDbInsert(messageRows *[]Message, logSeverityRows *[]ServiceSeverity) error {
-	valueStrings1 := make([]string, 0, len(*messageRows))
-	valueArgs1 := make([]interface{}, 0, len(*messageRows)*4)
-	for _, post := range *messageRows {
+func (repo *Repository) BulkDbInsert(messageRows []Message, logSeverityRows []ServiceSeverity) error {
+	valueStrings1 := make([]string, 0, len(messageRows))
+	valueArgs1 := make([]interface{}, 0, len(messageRows)*4)
+	for _, post := range messageRows {
 		valueStrings1 = append(valueStrings1, "(?, ?, ?, ?)")
 		valueArgs1 = append(valueArgs1, post.ServiceName)
 		valueArgs1 = append(valueArgs1, post.Payload)
@@ -82,9 +82,9 @@ func (repo *Repository) BulkDbInsert(messageRows *[]Message, logSeverityRows *[]
 	stmt1 := fmt.Sprintf("INSERT INTO lms.service_logs (service_name,payload,severity,`timestamp`) VALUES %s",
 		strings.Join(valueStrings1, ","))
 
-	valueStrings2 := make([]string, 0, len(*logSeverityRows))
-	valueArgs2 := make([]interface{}, 0, len(*logSeverityRows)*3)
-	for _, post2 := range *logSeverityRows {
+	valueStrings2 := make([]string, 0, len(logSeverityRows))
+	valueArgs2 := make([]interface{}, 0, len(logSeverityRows)*3)
+	for _, post2 := range logSeverityRows {
 		valueStrings2 = append(valueStrings2, "(?, ?, ?)")
 		valueArgs2 = append(valueArgs2, post2.ServiceName)
 		valueArgs2 = append(valueArgs2, post2.Severity)

@@ -31,11 +31,11 @@ type ReceiverResult struct {
 	Data []byte
 }
 
-type Logs *[]Message
+type Logs []Message
 
 type LogsBatch struct {
-	LogMessage      *[]Message
-	ServiceSeverity *[]ServiceSeverity
+	LogMessage      []Message
+	ServiceSeverity []ServiceSeverity
 }
 
 // ReceiverWorker receives messages from pub/sub and send it to receiverResult Channel
@@ -233,8 +233,8 @@ func (repo *Repository) MessageProcessWorker(msgSize int, results <-chan Receive
 		}
 
 		logsBatch <- LogsBatch{
-			LogMessage:      &batch,
-			ServiceSeverity: &serviceSeverity,
+			LogMessage:      batch,
+			ServiceSeverity: serviceSeverity,
 		}
 	}
 }
