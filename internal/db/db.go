@@ -99,7 +99,6 @@ func NewConn() (*config.Conn, error) {
 		PingContextTimeout: 10,
 	}
 
-	fmt.Println(dsn)
 	ctx := context.Background()
 	db, err := ConnectSQL(ctx, dsn, &dbPool)
 	if err != nil {
