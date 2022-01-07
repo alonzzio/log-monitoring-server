@@ -51,12 +51,9 @@ func NewRepo(a *config.AppConfig) *Repository {
 // NewHandlers  sets the repository  for the handlers
 func NewHandlers(r *Repository) {
 	Repo = r
-	//logger = r.App.Logger.Logger
 }
 
 var Repo *Repository
-
-//var logger zerolog.Logger
 
 // GetPayLoad generates payload as a paragraph.
 // Word count and Sentence count can be adjusted in env
@@ -84,11 +81,11 @@ func (repo *Repository) GetRandomServiceName(s []string) string {
 }
 
 // PublishBulkMessage publishes a message to given topic
-func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
+func (repo *Repository) PublishBulkMessage(topic string, msg []Message, c *pubsub.Client, msgConfig PublisherServiceConfig) error {
 	t := c.Topic(topic)
 	ctx := context.Background()
 	defer t.Stop()
-	for _, m := range *msg {
+	for _, m := range msg {
 		var results []*pubsub.PublishResult
 		out, err := json.Marshal(m)
 		if err != nil {
@@ -108,7 +105,6 @@ func (repo *Repository) PublishBulkMessage(topic string, msg *[]Message, c *pubs
 	}
 	return nil
 }
-
 
 // NewPubSubClient creates a new client connection for pub/sub
 func (repo *Repository) NewPubSubClient(ctx context.Context, projectID string) (*pubsub.Client, error) {
@@ -143,7 +139,7 @@ func (repo *Repository) CreateTopic(ctx context.Context, topic string, c *pubsub
 
 // GenerateRandomMessages for the pub sub
 // it creates multiple messages as slice
-func (repo *Repository) GenerateRandomMessages(n uint, serviceNames []string) *[]Message {
+func (repo *Repository) GenerateRandomMessages(n uint, serviceNames []string) []Message {
 	m := make([]Message, 0)
 	for i := uint(0); i < n; i++ {
 		//compose message
@@ -155,7 +151,7 @@ func (repo *Repository) GenerateRandomMessages(n uint, serviceNames []string) *[
 		}
 		m = append(m, a)
 	}
-	return &m
+	return m
 }
 
 // GenerateARandomMessage for the pub sub
